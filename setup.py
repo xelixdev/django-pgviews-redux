@@ -4,15 +4,11 @@ from os.path import isfile
 
 from setuptools import setup, find_packages
 
-try:
-    import pypandoc
 
-    LONG_DESCRIPTION = pypandoc.convert("README.md", "rst")
-except (IOError, ImportError):
-    if isfile("README.md"):
-        LONG_DESCRIPTION = open("README.md").read()
-    else:
-        LONG_DESCRIPTION = ""
+if isfile("README.md"):
+    LONG_DESCRIPTION = open("README.md").read()
+else:
+    LONG_DESCRIPTION = ""
 
 
 setup(
@@ -20,6 +16,7 @@ setup(
     version="0.6.0",
     description="Create and manage Postgres SQL Views in Django",
     long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
     author="Mikuláš Poul",
     author_email="mikulaspoul@gmail.com",
     license="Public Domain",
