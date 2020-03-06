@@ -6,13 +6,12 @@ import logging
 import re
 
 import django
+import psycopg2
 from django.core import exceptions
 from django.db import connection, transaction
 from django.db.models.query import QuerySet
 from django.db import models
-from django.utils import six
 from django.apps import apps
-import psycopg2
 
 from django_pgviews.db import get_fields_by_name
 
@@ -161,7 +160,7 @@ class ViewMeta(models.base.ModelBase):
         for field_name in projection:
             if isinstance(field_name, models.Field):
                 attrs[field_name.name] = copy.copy(field_name)
-            elif isinstance(field_name, six.string_types):
+            elif isinstance(field_name, str):
                 match = FIELD_SPEC_RE.match(field_name)
                 if not match:
                     raise TypeError("Unrecognized field specifier: %r" %
@@ -199,7 +198,7 @@ else:
     BaseManagerMeta = object
 
 
-class View(six.with_metaclass(ViewMeta, models.Model)):
+class View(models.Model, metaclass=ViewMeta):
     """Helper for exposing Postgres views as Django models.
     """
     _deferred = False
