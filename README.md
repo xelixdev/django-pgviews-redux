@@ -1,17 +1,20 @@
 # SQL Views for Postgres
 
 [![Circle CI](https://circleci.com/gh/mikicz/django-pgviews.png)](https://circleci.com/gh/mikicz/django-pgviews)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM
+Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM.
+For of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for Django 2.2+.
 
 [pg-views]: http://www.postgresql.org/docs/9.1/static/sql-createview.html
-
+[django-pgviews]: https://github.com/mypebble/django-pgviews
+[mypebble]: https://github.com/mypebble
 
 ## Installation
 
 Install via pip:
 
-    pip install django-pgviews
+    pip install django-pgviews-redux
 
 Add to installed applications in settings.py:
 
@@ -316,6 +319,14 @@ Provides args:
       <td>1.10</td>
       <td>0.2.0</td>
     </tr>
+    <tr>
+      <td>2.2</td>
+      <td>0.6.0</td>
+    </tr>
+    <tr>
+      <td>3.0</td>
+      <td>0.6.0</td>
+    </tr>
   </tbody>
 </table>
 
@@ -341,4 +352,5 @@ who have covered this in a bit more detail.
 
 ## Python 3 Support
 
-Django PGViews supports Python 3 in versions 0.0.7 and above.
+Django PGViews Redux only supports Python 3.6+.
+
