@@ -15,7 +15,7 @@ from . import models
 
 @receiver(signals.post_migrate)
 def create_test_schema(sender, app_config, **kwargs):
-    command = 'CREATE SCHEMA IF NOT EXISTS {};'.format('test_schema')
+    command = "CREATE SCHEMA IF NOT EXISTS {};".format("test_schema")
     with connection.cursor() as cursor:
         cursor.execute(command)
 
@@ -28,50 +28,59 @@ class ViewTestCase(TestCase):
         """Look at the PG View table to ensure views were created.
         """
         with closing(connection.cursor()) as cur:
-            cur.execute('''SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';''')
+            cur.execute(
+                """SELECT COUNT(*) FROM pg_views
+                        WHERE viewname LIKE 'viewtest_%';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 4)
 
-            cur.execute('''SELECT COUNT(*) FROM pg_matviews
-                        WHERE matviewname LIKE 'viewtest_%';''')
+            cur.execute(
+                """SELECT COUNT(*) FROM pg_matviews
+                        WHERE matviewname LIKE 'viewtest_%';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 3)
 
-            cur.execute('''SELECT COUNT(*) FROM information_schema.views
-                        WHERE table_schema = 'test_schema';''')
+            cur.execute(
+                """SELECT COUNT(*) FROM information_schema.views
+                        WHERE table_schema = 'test_schema';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 1)
 
     def test_clear_views(self):
         """Check the PG View table to see that the views were removed.
         """
-        call_command('clear_pgviews', *[], **{})
+        call_command("clear_pgviews", *[], **{})
         with closing(connection.cursor()) as cur:
-            cur.execute('''SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';''')
+            cur.execute(
+                """SELECT COUNT(*) FROM pg_views
+                        WHERE viewname LIKE 'viewtest_%';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 0)
 
-            cur.execute('''SELECT COUNT(*) FROM information_schema.views
-                        WHERE table_schema = 'test_schema';''')
+            cur.execute(
+                """SELECT COUNT(*) FROM information_schema.views
+                        WHERE table_schema = 'test_schema';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 0)
 
     def test_wildcard_projection(self):
         """Wildcard projections take all fields from a projected model.
         """
-        foo_user = auth.models.User.objects.create(
-            username='foo', is_superuser=True)
-        foo_user.set_password('blah')
+        foo_user = auth.models.User.objects.create(username="foo", is_superuser=True)
+        foo_user.set_password("blah")
         foo_user.save()
 
-        foo_superuser = models.Superusers.objects.get(username='foo')
+        foo_superuser = models.Superusers.objects.get(username="foo")
 
         self.assertEqual(foo_user.id, foo_superuser.id)
         self.assertEqual(foo_user.password, foo_superuser.password)
@@ -79,16 +88,15 @@ class ViewTestCase(TestCase):
     def test_limited_projection(self):
         """A limited projection only creates the projected fields.
         """
-        foo_user = auth.models.User.objects.create(
-            username='foo', is_superuser=True)
-        foo_user.set_password('blah')
+        foo_user = auth.models.User.objects.create(username="foo", is_superuser=True)
+        foo_user.set_password("blah")
         foo_user.save()
 
-        foo_simple = models.SimpleUser.objects.get(username='foo')
+        foo_simple = models.SimpleUser.objects.get(username="foo")
 
         self.assertEqual(foo_simple.username, foo_user.username)
         self.assertEqual(foo_simple.password, foo_user.password)
-        self.assertFalse(getattr(foo_simple, 'date_joined', False))
+        self.assertFalse(getattr(foo_simple, "date_joined", False))
 
     def test_related_delete(self):
         """Test views do not interfere with deleting the models
@@ -101,37 +109,34 @@ class ViewTestCase(TestCase):
     def test_materialized_view(self):
         """Test a materialized view works correctly
         """
-        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0,
-                         'Materialized view should not have anything')
+        self.assertEqual(
+            models.MaterializedRelatedView.objects.count(), 0, "Materialized view should not have anything"
+        )
 
         test_model = models.TestModel()
         test_model.name = "Bob"
         test_model.save()
 
-        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0,
-                         'Materialized view should not have anything')
+        self.assertEqual(
+            models.MaterializedRelatedView.objects.count(), 0, "Materialized view should not have anything"
+        )
 
         models.MaterializedRelatedView.refresh()
 
-        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1,
-                         'Materialized view should have updated')
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1, "Materialized view should have updated")
 
         models.MaterializedRelatedViewWithIndex.refresh(concurrently=True)
 
         self.assertEqual(
-            models.MaterializedRelatedViewWithIndex.objects.count(), 1,
-            'Materialized view should have updated concurrently')
+            models.MaterializedRelatedViewWithIndex.objects.count(),
+            1,
+            "Materialized view should have updated concurrently",
+        )
 
     def test_signals(self):
         expected = {
-            models.MaterializedRelatedView: {
-                'status': 'CREATED',
-                'has_changed': True,
-            },
-            models.Superusers: {
-                'status': 'EXISTS',
-                'has_changed': False,
-            }
+            models.MaterializedRelatedView: {"status": "CREATED", "has_changed": True},
+            models.Superusers: {"status": "EXISTS", "has_changed": False},
         }
         synced_views = []
         all_views_were_synced = [False]
@@ -141,16 +146,13 @@ class ViewTestCase(TestCase):
             synced_views.append(sender)
             if sender in expected:
                 expected_kwargs = expected.pop(sender)
-                self.assertEqual(
-                    dict(expected_kwargs,
-                         update=False, force=False, signal=view_synced),
-                    kwargs)
+                self.assertEqual(dict(expected_kwargs, update=False, force=False, signal=view_synced), kwargs)
 
         @receiver(all_views_synced)
         def on_all_views_synced(sender, **kwargs):
             all_views_were_synced[0] = True
 
-        call_command('sync_pgviews', update=False)
+        call_command("sync_pgviews", update=False)
 
         # All views went through syncing
         self.assertEqual(len(synced_views), 8)
@@ -173,21 +175,26 @@ class DependantViewTestCase(TestCase):
 
             cur.execute(
                 """CREATE VIEW viewtest_relatedview as
-                SELECT id AS model_id, name FROM viewtest_testmodel;""")
+                SELECT id AS model_id, name FROM viewtest_testmodel;"""
+            )
 
-            cur.execute("""CREATE VIEW viewtest_dependantview as
-                        SELECT name from viewtest_relatedview;""")
+            cur.execute(
+                """CREATE VIEW viewtest_dependantview as
+                        SELECT name from viewtest_relatedview;"""
+            )
 
             cur.execute("""SELECT name from viewtest_relatedview;""")
             cur.execute("""SELECT name from viewtest_dependantview;""")
 
-        call_command('sync_pgviews', '--force')
+        call_command("sync_pgviews", "--force")
 
         with closing(connection.cursor()) as cur:
-            cur.execute("""SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';""")
+            cur.execute(
+                """SELECT COUNT(*) FROM pg_views
+                        WHERE viewname LIKE 'viewtest_%';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 4)
 
             with self.assertRaises(Exception):
@@ -202,37 +209,41 @@ class DependantViewTestCase(TestCase):
         with closing(connection.cursor()) as cur:
             cur.execute(
                 """DROP MATERIALIZED VIEW viewtest_materializedrelatedview
-                CASCADE;""")
+                CASCADE;"""
+            )
 
             cur.execute(
                 """CREATE MATERIALIZED VIEW viewtest_materializedrelatedview as
-                SELECT id AS model_id, name FROM viewtest_testmodel;""")
+                SELECT id AS model_id, name FROM viewtest_testmodel;"""
+            )
 
             cur.execute(
                 """CREATE MATERIALIZED VIEW viewtest_dependantmaterializedview
-                as SELECT name from viewtest_materializedrelatedview;""")
-            cur.execute(
-                """SELECT name from viewtest_materializedrelatedview;""")
-            cur.execute(
-                """SELECT name from viewtest_dependantmaterializedview;""")
+                as SELECT name from viewtest_materializedrelatedview;"""
+            )
+            cur.execute("""SELECT name from viewtest_materializedrelatedview;""")
+            cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")
 
-        call_command('sync_pgviews', '--force')
+        call_command("sync_pgviews", "--force")
 
         with closing(connection.cursor()) as cur:
-            cur.execute("""SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';""")
+            cur.execute(
+                """SELECT COUNT(*) FROM pg_views
+                        WHERE viewname LIKE 'viewtest_%';"""
+            )
 
-            count, = cur.fetchone()
+            (count,) = cur.fetchone()
             self.assertEqual(count, 4)
 
             with self.assertRaises(Exception):
                 cur.execute(
                     """SELECT name from
-                    viewtest_dependantmaterializedview;""")
-                cur.execute(
-                    """SELECT name from viewtest_materializedrelatedview; """)
+                    viewtest_dependantmaterializedview;"""
+                )
+                cur.execute("""SELECT name from viewtest_materializedrelatedview; """)
 
             with self.assertRaises(Exception):
                 cur.execute(
                     """SELECT name from
-                    viewtest_dependantmaterializedview;""")
+                    viewtest_dependantmaterializedview;"""
+                )
