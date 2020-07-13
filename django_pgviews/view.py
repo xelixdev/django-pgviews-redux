@@ -81,14 +81,19 @@ def create_view(connection, view_name, view_query, update=True, force=False, mat
     else:
         vschema, vname = "public", view_name
 
+    if materialized:
+        relkind = 'm'
+    else:
+        relkind = 'v'
+
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
     try:
         force_required = False
         # Determine if view already exists.
         cursor.execute(
-            "SELECT COUNT(*) FROM information_schema.views WHERE table_schema = %s and table_name = %s;",
-            [vschema, vname],
+            "SELECT COUNT(*) FROM pg_class WHERE relkind = %s and relname = %s;",
+            [relkind, vname],
         )
         view_exists = cursor.fetchone()[0] > 0
         if view_exists and not update:
