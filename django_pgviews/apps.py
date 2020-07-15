@@ -28,7 +28,7 @@ class ViewConfig(apps.AppConfig):
             from .models import ViewSyncer
 
             vs = ViewSyncer()
-            vs.run(force=True, update=True)
+            vs.run(force=True, update=False)
 
     def ready(self):
         """Find and setup the apps to set the post_migrate hooks for.
