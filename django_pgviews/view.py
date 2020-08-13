@@ -33,7 +33,7 @@ def hasfield(model_cls, field_name):
     try:
         model_cls._meta.get_field(field_name)
         return True
-    except models.FieldDoesNotExist:
+    except exceptions.FieldDoesNotExist:
         return False
 
 
