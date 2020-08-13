@@ -50,3 +50,4 @@ README.rst
 .idea
 pip-selfcheck.json
 tags
+pip-wheel-metadata
