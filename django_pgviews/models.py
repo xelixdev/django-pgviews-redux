@@ -51,7 +51,7 @@ class ViewSyncer(object):
                 status = create_view(
                     connection,
                     view_cls._meta.db_table,
-                    view_cls.sql,
+                    view_cls.get_sql(),
                     update=update,
                     force=force,
                     materialized=isinstance(view_cls(), MaterializedView),

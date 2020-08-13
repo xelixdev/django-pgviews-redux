@@ -18,6 +18,8 @@ from django_pgviews.db import get_fields_by_name
 FIELD_SPEC_REGEX = r"^([A-Za-z_][A-Za-z0-9_]*)\." r"([A-Za-z_][A-Za-z0-9_]*)\." r"(\*|(?:[A-Za-z_][A-Za-z0-9_]*))$"
 FIELD_SPEC_RE = re.compile(FIELD_SPEC_REGEX)
 
+ViewSQL = collections.namedtuple("ViewSQL", "query,params")
+
 log = logging.getLogger("django_pgviews.view")
 
 
@@ -62,7 +64,7 @@ models.signals.class_prepared.connect(realize_deferred_projections)
 
 
 @transaction.atomic()
-def create_view(connection, view_name, view_query, update=True, force=False, materialized=False, index=None):
+def create_view(connection, view_name, view_query: ViewSQL, update=True, force=False, materialized=False, index=None):
     """
     Create a named view on a connection.
 
@@ -98,7 +100,10 @@ def create_view(connection, view_name, view_query, update=True, force=False, mat
             cursor.execute("CREATE TEMPORARY VIEW check_conflict AS SELECT * FROM {0};".format(view_name))
             try:
                 with transaction.atomic():
-                    cursor.execute("CREATE OR REPLACE TEMPORARY VIEW check_conflict AS {0};".format(view_query))
+                    cursor.execute(
+                        "CREATE OR REPLACE TEMPORARY VIEW check_conflict AS {0};".format(view_query.query),
+                        view_query.params,
+                    )
             except psycopg2.ProgrammingError:
                 force_required = True
             finally:
@@ -106,7 +111,9 @@ def create_view(connection, view_name, view_query, update=True, force=False, mat
 
         if materialized:
             cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
-            cursor.execute("CREATE MATERIALIZED VIEW {0} AS {1};".format(view_name, view_query))
+            cursor.execute(
+                "CREATE MATERIALIZED VIEW {0} AS {1};".format(view_name, view_query.query), view_query.params
+            )
             if index is not None:
                 index_sub_name = "_".join([s.strip() for s in index.split(",")])
                 cursor.execute(
@@ -114,11 +121,11 @@ def create_view(connection, view_name, view_query, update=True, force=False, mat
                 )
             ret = view_exists and "UPDATED" or "CREATED"
         elif not force_required:
-            cursor.execute("CREATE OR REPLACE VIEW {0} AS {1};".format(view_name, view_query))
+            cursor.execute("CREATE OR REPLACE VIEW {0} AS {1};".format(view_name, view_query.query), view_query.params)
             ret = view_exists and "UPDATED" or "CREATED"
         elif force:
             cursor.execute("DROP VIEW IF EXISTS {0} CASCADE;".format(view_name))
-            cursor.execute("CREATE VIEW {0} AS {1};".format(view_name, view_query))
+            cursor.execute("CREATE VIEW {0} AS {1};".format(view_name, view_query.query), view_query.params)
             ret = "FORCED"
         else:
             ret = "FORCE_REQUIRED"
@@ -197,10 +204,15 @@ else:
 
 
 class View(models.Model, metaclass=ViewMeta):
-    """Helper for exposing Postgres views as Django models.
+    """ Helper for exposing Postgres views as Django models.
     """
 
     _deferred = False
+    sql = None
+
+    @classmethod
+    def get_sql(cls):
+        return ViewSQL(cls.sql, None)
 
     class Meta:
         abstract = True

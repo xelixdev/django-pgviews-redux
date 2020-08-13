@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 
 from django_pgviews import view
 
@@ -13,6 +16,17 @@ class TestModel(models.Model):
 class Superusers(view.View):
     projection = ["auth.User.*"]
     sql = """SELECT * FROM auth_user WHERE is_superuser = TRUE;"""
+
+
+class LatestSuperusers(view.View):  # concept doesn't make much sense, but it will get the job done
+    projection = ["auth.User.*"]
+
+    @classmethod
+    def get_sql(cls):
+        return view.ViewSQL(
+            """SELECT * FROM auth_user WHERE is_superuser = TRUE and date_joined >= %s;""",
+            [timezone.now() - timedelta(days=5)],
+        )
 
 
 class SimpleUser(view.View):

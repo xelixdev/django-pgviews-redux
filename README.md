@@ -261,6 +261,30 @@ class PreferredCustomer(pg.View):
       managed = False
 ```
 
+### Dynamic View SQL
+
+If you need a dynamic view SQL (for example if it needs a value from settings in it), you can override the `run_sql`
+classmethod on the view to return the SQL. The method should return a namedtuple `ViewSQL`, which contains the query
+and potentially the params to `cursor.execute` call. Params should be either None or a list of parameters for the query.
+
+```python
+from django.conf import settings
+from django_pgviews import view as pg
+
+
+class PreferredCustomer(pg.View):
+    @classmethod
+    def get_sql(cls):
+        return pg.ViewSQL(
+            """SELECT * FROM myapp_customer WHERE is_preferred = TRUE and created_at >= %s;""",
+            [settings.MIN_PREFERRED_CUSTOMER_CREATED_AT]
+        )
+
+    class Meta:
+      db_table = 'preferredcustomer'
+      managed = False
+```
+
 ### Sync Listeners
 
 django-pgviews 0.5.0 adds the ability to listen to when a `post_sync` event has

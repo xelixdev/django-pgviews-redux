@@ -1,16 +1,21 @@
 """Test Django PGViews.
 """
 from contextlib import closing
+from datetime import timedelta
 
 from django.contrib import auth
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import connection
 from django.db.models import signals
 from django.dispatch import receiver
 from django.test import TestCase
+from django.utils import timezone
+
 from django_pgviews.signals import view_synced, all_views_synced
 
 from . import models
+from .models import LatestSuperusers
 
 
 @receiver(signals.post_migrate)
@@ -31,7 +36,7 @@ class ViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 5)
 
             cur.execute("""SELECT COUNT(*) FROM pg_matviews WHERE matviewname LIKE 'viewtest_%';""")
 
@@ -140,9 +145,17 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 8)
+        self.assertEqual(len(synced_views), 9)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
+
+    def test_get_sql(self):
+        User.objects.create(username="old", is_superuser=True, date_joined=timezone.now() - timedelta(days=10))
+        User.objects.create(username="new", is_superuser=True, date_joined=timezone.now() - timedelta(days=1))
+
+        call_command("sync_pgviews", update=False)
+
+        self.assertEqual(LatestSuperusers.objects.count(), 1)
 
 
 class DependantViewTestCase(TestCase):
@@ -171,7 +184,7 @@ class DependantViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 5)
 
             with self.assertRaises(Exception):
                 cur.execute("""SELECT name from viewtest_relatedview;""")
@@ -203,13 +216,10 @@ class DependantViewTestCase(TestCase):
         call_command("sync_pgviews", "--force")
 
         with closing(connection.cursor()) as cur:
-            cur.execute(
-                """SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 5)
 
             with self.assertRaises(Exception):
                 cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")
