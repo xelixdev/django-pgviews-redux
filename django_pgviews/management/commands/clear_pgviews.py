@@ -1,11 +1,10 @@
 import logging
 
-from django.core.management.base import BaseCommand
 from django.apps import apps
+from django.core.management.base import BaseCommand
 from django.db import connection
 
 from django_pgviews.view import clear_view, View, MaterializedView
-
 
 log = logging.getLogger("django_pgviews.sync_pgviews")
 
@@ -27,7 +26,4 @@ class Command(BaseCommand):
                 msg = "dropped"
             else:
                 msg = "not dropped"
-            log.info(
-                "%(python_name)s (%(view_name)s): %(msg)s"
-                % {"python_name": python_name, "view_name": view_cls._meta.db_table, "msg": msg}
-            )
+            log.info("%s (%s): %s", python_name, view_cls._meta.db_table, msg)

@@ -28,26 +28,17 @@ class ViewTestCase(TestCase):
         """Look at the PG View table to ensure views were created.
         """
         with closing(connection.cursor()) as cur:
-            cur.execute(
-                """SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 4)
 
-            cur.execute(
-                """SELECT COUNT(*) FROM pg_matviews
-                        WHERE matviewname LIKE 'viewtest_%';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM pg_matviews WHERE matviewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 3)
 
-            cur.execute(
-                """SELECT COUNT(*) FROM information_schema.views
-                        WHERE table_schema = 'test_schema';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 1)
@@ -57,18 +48,12 @@ class ViewTestCase(TestCase):
         """
         call_command("clear_pgviews", *[], **{})
         with closing(connection.cursor()) as cur:
-            cur.execute(
-                """SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 0)
 
-            cur.execute(
-                """SELECT COUNT(*) FROM information_schema.views
-                        WHERE table_schema = 'test_schema';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 0)
@@ -173,15 +158,9 @@ class DependantViewTestCase(TestCase):
         with closing(connection.cursor()) as cur:
             cur.execute("DROP VIEW viewtest_relatedview CASCADE;")
 
-            cur.execute(
-                """CREATE VIEW viewtest_relatedview as
-                SELECT id AS model_id, name FROM viewtest_testmodel;"""
-            )
+            cur.execute("""CREATE VIEW viewtest_relatedview as SELECT id AS model_id, name FROM viewtest_testmodel;""")
 
-            cur.execute(
-                """CREATE VIEW viewtest_dependantview as
-                        SELECT name from viewtest_relatedview;"""
-            )
+            cur.execute("""CREATE VIEW viewtest_dependantview as SELECT name from viewtest_relatedview;""")
 
             cur.execute("""SELECT name from viewtest_relatedview;""")
             cur.execute("""SELECT name from viewtest_dependantview;""")
@@ -189,10 +168,7 @@ class DependantViewTestCase(TestCase):
         call_command("sync_pgviews", "--force")
 
         with closing(connection.cursor()) as cur:
-            cur.execute(
-                """SELECT COUNT(*) FROM pg_views
-                        WHERE viewname LIKE 'viewtest_%';"""
-            )
+            cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
             self.assertEqual(count, 4)
@@ -236,14 +212,8 @@ class DependantViewTestCase(TestCase):
             self.assertEqual(count, 4)
 
             with self.assertRaises(Exception):
-                cur.execute(
-                    """SELECT name from
-                    viewtest_dependantmaterializedview;"""
-                )
+                cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")
                 cur.execute("""SELECT name from viewtest_materializedrelatedview; """)
 
             with self.assertRaises(Exception):
-                cur.execute(
-                    """SELECT name from
-                    viewtest_dependantmaterializedview;"""
-                )
+                cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")

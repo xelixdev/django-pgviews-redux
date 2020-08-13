@@ -7,14 +7,13 @@ import re
 
 import django
 import psycopg2
+from django.apps import apps
 from django.core import exceptions
 from django.db import connection, transaction
-from django.db.models.query import QuerySet
 from django.db import models
-from django.apps import apps
+from django.db.models.query import QuerySet
 
 from django_pgviews.db import get_fields_by_name
-
 
 FIELD_SPEC_REGEX = r"^([A-Za-z_][A-Za-z0-9_]*)\." r"([A-Za-z_][A-Za-z0-9_]*)\." r"(\*|(?:[A-Za-z_][A-Za-z0-9_]*))$"
 FIELD_SPEC_RE = re.compile(FIELD_SPEC_REGEX)

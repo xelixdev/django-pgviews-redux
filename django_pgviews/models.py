@@ -3,8 +3,8 @@ import logging
 from django.apps import apps
 from django.db import connection
 
-from django_pgviews.view import create_view, View, MaterializedView
 from django_pgviews.signals import view_synced, all_views_synced
+from django_pgviews.view import create_view, View, MaterializedView
 
 log = logging.getLogger("django_pgviews.sync_pgviews")
 
@@ -23,7 +23,7 @@ class ViewSyncer(object):
             backlog = self.run_backlog(backlog, force, update)
 
         if loop >= 10:
-            log.warn("pgviews dependencies hit limit. Check if your model dependencies are correct")
+            log.warning("pgviews dependencies hit limit. Check if your model dependencies are correct")
         else:
             all_views_synced.send(sender=None)
 
@@ -80,5 +80,8 @@ class ViewSyncer(object):
                     msg = "forced overwrite of existing schema"
                 elif status == "FORCE_REQUIRED":
                     msg = "exists with incompatible schema, " "--force required to update"
-                log.info("pgview %(python_name)s %(msg)s" % {"python_name": name, "msg": msg})
+                else:
+                    msg = status
+
+                log.info("pgview %s %s", name, msg)
         return backlog
