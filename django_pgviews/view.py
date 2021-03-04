@@ -71,8 +71,29 @@ def schema_and_name(view_name):
         return "public", view_name
 
 
+def _create_mat_view(cursor, view_name, query, params, with_data):
+    """
+    Creates a materialized view using a specific cursor, name and definition.
+    """
+    cursor.execute(
+        "CREATE MATERIALIZED VIEW {0} AS {1} {2};".format(
+            view_name, query, "WITH DATA" if with_data else "WITH NO DATA"
+        ),
+        params,
+    )
+
+
+def _drop_mat_view(cursor, view_name):
+    """
+    Drops a materialized view using a specific cursor.
+    """
+    cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
+
+
 @transaction.atomic()
-def create_materialized_view(connection, view_name, view_query: ViewSQL, index=None, with_data=True):
+def create_materialized_view(
+    connection, view_name, view_query: ViewSQL, index=None, with_data=True, check_sql_changed=False
+):
     vschema, vname = schema_and_name(view_name)
 
     cursor_wrapper = connection.cursor()
@@ -85,19 +106,30 @@ def create_materialized_view(connection, view_name, view_query: ViewSQL, index=N
         )
         view_exists = cursor.fetchone()[0] > 0
 
-        if view_exists:
-            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
-
         query = view_query.query.strip()
         if query.endswith(";"):
             query = query[:-1]
 
-        cursor.execute(
-            "CREATE MATERIALIZED VIEW {0} AS {1} {2};".format(
-                view_name, query, "WITH DATA" if with_data else "WITH NO DATA"
-            ),
-            view_query.params,
-        )
+        if check_sql_changed and view_exists:
+            temp_viewname = view_name + "_temp"
+            _, temp_vname = schema_and_name(temp_viewname)
+            _create_mat_view(cursor, temp_viewname, query, view_query.params, with_data=False)
+
+            cursor.execute(
+                "SELECT definition FROM pg_matviews WHERE schemaname = %s and matviewname IN (%s, %s);",
+                [vschema, vname, temp_vname],
+            )
+            definitions = cursor.fetchall()
+
+            _drop_mat_view(cursor, temp_viewname)
+
+            if definitions[0] == definitions[1]:
+                return "EXISTS"
+
+        if view_exists:
+            _drop_mat_view(cursor, view_name)
+
+        _create_mat_view(cursor, view_name, query, view_query.params, with_data=with_data)
         if index is not None:
             index_sub_name = "_".join([s.strip() for s in index.split(",")])
             cursor.execute("CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, index))

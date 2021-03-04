@@ -3,6 +3,7 @@
 from contextlib import closing
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -180,6 +181,77 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         self.assertEqual(LatestSuperusers.objects.count(), 1)
+
+    def test_sync_pgviews_materialized_views_check_sql_changed(self):
+        self.assertEqual(models.TestModel.objects.count(), 0, "Test started with non-empty TestModel")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0, "Test started with non-empty mat view")
+
+        models.TestModel.objects.create(name="Test")
+
+        # test regular behaviour, the mat view got recreated
+        call_command("sync_pgviews", update=False)  # uses default django setting, False
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+
+        # the mat view did not get recreated because the model hasn't changed
+        models.TestModel.objects.create(name="Test 2")
+        call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+
+        # the mat view got recreated because the mat view SQL has changed
+
+        # let's pretend the mat view in the DB is ordered by name, while the defined on models isn't
+        with connection.cursor() as cursor:
+            cursor.execute("DROP MATERIALIZED VIEW viewtest_materializedrelatedview CASCADE;")
+            cursor.execute(
+                """
+                CREATE MATERIALIZED VIEW viewtest_materializedrelatedview as
+                SELECT id AS model_id, id FROM viewtest_testmodel ORDER BY name;
+                """
+            )
+
+        call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 2)
+
+    def test_migrate_materialized_views_check_sql_changed_default(self):
+        self.assertEqual(models.TestModel.objects.count(), 0, "Test started with non-empty TestModel")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0, "Test started with non-empty mat view")
+
+        models.TestModel.objects.create(name="Test")
+
+        print("Run migrate\n")
+        call_command("migrate")
+
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+
+
+class TestMaterializedViewsCheckSQLSettings(TestCase):
+    def setUp(self):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
+
+    def test_migrate_materialized_views_check_sql_set_to_true(self):
+        self.assertEqual(models.TestModel.objects.count(), 0)
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0)
+
+        models.TestModel.objects.create(name="Test")
+        call_command("migrate")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0)
+
+        # let's pretend the mat view in the DB is ordered by name, while the defined on models isn't
+        with connection.cursor() as cursor:
+            cursor.execute("DROP MATERIALIZED VIEW viewtest_materializedrelatedview CASCADE;")
+            cursor.execute(
+                """
+                CREATE MATERIALIZED VIEW viewtest_materializedrelatedview as
+                SELECT id AS model_id, id FROM viewtest_testmodel ORDER BY name;
+                """
+            )
+
+        # which means that when the sync is triggered here, the mat view will get updated
+        call_command("migrate")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+
+    def tearDown(self):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
 
 
 class DependantViewTestCase(TestCase):

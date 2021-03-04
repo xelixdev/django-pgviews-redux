@@ -28,9 +28,15 @@ class ViewConfig(apps.AppConfig):
             # Import here otherwise Django doesn't start properly
             # (models in app init are not allowed)
             from .models import ViewSyncer
+            from django.conf import settings
 
             vs = ViewSyncer()
-            vs.run(force=True, update=True)
+            vs.run(
+                force=True,
+                update=True,
+                materialized_views_check_sql_changed=getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", False),
+            )
+            self.counter = 0
 
     def ready(self):
         """
