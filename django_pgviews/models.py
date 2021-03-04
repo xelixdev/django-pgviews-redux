@@ -54,6 +54,7 @@ class ViewSyncer(object):
                         view_cls._meta.db_table,
                         view_cls.get_sql(),
                         index=view_cls._concurrent_index,
+                        with_data=view_cls.with_data,
                     )
                 else:
                     status = create_view(

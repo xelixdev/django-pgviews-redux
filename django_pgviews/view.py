@@ -65,13 +65,24 @@ models.signals.class_prepared.connect(realize_deferred_projections)
 
 
 @transaction.atomic()
-def create_materialized_view(connection, view_name, view_query: ViewSQL, index=None):
+def create_materialized_view(connection, view_name, view_query: ViewSQL, index=None, with_data=True):
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
 
     try:
         cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
-        cursor.execute("CREATE MATERIALIZED VIEW {0} AS {1};".format(view_name, view_query.query), view_query.params)
+
+        query = view_query.query.strip()
+        if query.endswith(";"):
+            query = query[:-1]
+        cursor.execute(
+            "CREATE MATERIALIZED VIEW {0} AS {1} {2};".format(
+                view_name,
+                query,
+                "WITH DATA" if with_data else "WITH NO DATA",
+            ),
+            view_query.params,
+        )
         if index is not None:
             index_sub_name = "_".join([s.strip() for s in index.split(",")])
             cursor.execute("CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, index))
@@ -284,6 +295,8 @@ class MaterializedView(View):
     More information:
     http://www.postgresql.org/docs/current/static/sql-creatematerializedview.html
     """
+
+    with_data = True
 
     @classmethod
     def refresh(self, concurrently=False):

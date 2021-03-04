@@ -214,6 +214,8 @@ def customer_saved(sender, action=None, instance=None, **kwargs):
     PreferredCustomer.refresh()
 ```
 
+#### Concurrent refresh
+
 Postgres 9.4 and up allow materialized views to be refreshed concurrently, without blocking reads, as long as a
 unique index exists on the materialized view. To enable concurrent refresh, specify the name of a column that can be
 used as a unique index on the materialized view. Unique index can be defined on more than one column of a materialized 
@@ -242,6 +244,29 @@ class PreferredCustomer(pg.MaterializedView):
 @receiver(post_save, sender=Customer)
 def customer_saved(sender, action=None, instance=None, **kwargs):
     PreferredCustomer.refresh(concurrently=True)
+```
+
+#### WITH NO DATA
+
+Materialized views can be created either with or without data. By default, they are created with data, however
+`pg-views` supports creating materialized views without data, by defining `with_data = False` for the
+`pg.MaterializedView` class. Such views then do not support querying until the first 
+refresh (raising `django.db.utils.OperationalError`).
+
+Example:
+
+```python
+from django_pgviews import view as pg
+
+class PreferredCustomer(pg.MaterializedView):
+    concurrent_index = 'id, post_code'
+    sql = """
+        SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE
+    """
+    with_data = False
+
+    name = models.CharField(max_length=100)
+    post_code = models.CharField(max_length=20)
 ```
 
 ### Custom Schema

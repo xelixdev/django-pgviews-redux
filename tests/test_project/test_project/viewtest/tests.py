@@ -7,6 +7,7 @@ from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import connection
+from django.db.utils import OperationalError
 from django.db.models import signals
 from django.dispatch import receiver
 from django.test import TestCase
@@ -43,7 +44,7 @@ class ViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_matviews WHERE matviewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            self.assertEqual(count, 3)
+            self.assertEqual(count, 4)
 
             cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
@@ -130,6 +131,22 @@ class ViewTestCase(TestCase):
             "Materialized view should have updated concurrently",
         )
 
+    def test_materialized_view_with_no_data(self):
+        """
+        Test a materialized view with no data works correctly
+        """
+        with self.assertRaises(OperationalError):
+            models.MaterializedRelatedViewWithNoData.objects.count()
+
+    def test_materialized_view_with_no_data_after_refresh(self):
+        models.TestModel.objects.create(name="Bob")
+
+        models.MaterializedRelatedViewWithNoData.refresh()
+
+        self.assertEqual(
+            models.MaterializedRelatedViewWithNoData.objects.count(), 1, "Materialized view should have updated"
+        )
+
     def test_signals(self):
         expected = {
             models.MaterializedRelatedView: {"status": "CREATED", "has_changed": True},
@@ -152,7 +169,7 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 9)
+        self.assertEqual(len(synced_views), 10)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
 
