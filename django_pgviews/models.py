@@ -4,7 +4,7 @@ from django.apps import apps
 from django.db import connection
 
 from django_pgviews.signals import view_synced, all_views_synced
-from django_pgviews.view import create_view, View, MaterializedView
+from django_pgviews.view import create_view, View, MaterializedView, create_materialized_view
 
 log = logging.getLogger("django_pgviews.sync_pgviews")
 
@@ -48,15 +48,22 @@ class ViewSyncer(object):
                 continue  # Skip
 
             try:
-                status = create_view(
-                    connection,
-                    view_cls._meta.db_table,
-                    view_cls.get_sql(),
-                    update=update,
-                    force=force,
-                    materialized=isinstance(view_cls(), MaterializedView),
-                    index=view_cls._concurrent_index,
-                )
+                if isinstance(view_cls(), MaterializedView):
+                    status = create_materialized_view(
+                        connection,
+                        view_cls._meta.db_table,
+                        view_cls.get_sql(),
+                        index=view_cls._concurrent_index,
+                    )
+                else:
+                    status = create_view(
+                        connection,
+                        view_cls._meta.db_table,
+                        view_cls.get_sql(),
+                        update=update,
+                        force=force,
+                    )
+
                 view_synced.send(
                     sender=view_cls,
                     update=update,
