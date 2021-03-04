@@ -149,7 +149,7 @@ class ViewTestCase(TestCase):
 
     def test_signals(self):
         expected = {
-            models.MaterializedRelatedView: {"status": "CREATED", "has_changed": True},
+            models.MaterializedRelatedView: {"status": "UPDATED", "has_changed": True},
             models.Superusers: {"status": "EXISTS", "has_changed": False},
         }
         synced_views = []

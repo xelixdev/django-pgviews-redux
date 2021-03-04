@@ -64,28 +64,47 @@ def realize_deferred_projections(sender, *args, **kwargs):
 models.signals.class_prepared.connect(realize_deferred_projections)
 
 
+def schema_and_name(view_name):
+    if "." in view_name:
+        return view_name.split(".", 1)
+    else:
+        return "public", view_name
+
+
 @transaction.atomic()
 def create_materialized_view(connection, view_name, view_query: ViewSQL, index=None, with_data=True):
+    vschema, vname = schema_and_name(view_name)
+
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
 
     try:
-        cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
+        cursor.execute(
+            "SELECT COUNT(*) FROM pg_matviews WHERE schemaname = %s and matviewname = %s;",
+            [vschema, vname],
+        )
+        view_exists = cursor.fetchone()[0] > 0
+
+        if view_exists:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
 
         query = view_query.query.strip()
         if query.endswith(";"):
             query = query[:-1]
+
         cursor.execute(
             "CREATE MATERIALIZED VIEW {0} AS {1} {2};".format(
-                view_name,
-                query,
-                "WITH DATA" if with_data else "WITH NO DATA",
+                view_name, query, "WITH DATA" if with_data else "WITH NO DATA"
             ),
             view_query.params,
         )
         if index is not None:
             index_sub_name = "_".join([s.strip() for s in index.split(",")])
             cursor.execute("CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, index))
+
+        if view_exists:
+            return "UPDATED"
+
         return "CREATED"
     finally:
         cursor_wrapper.close()
@@ -105,10 +124,7 @@ def create_view(connection, view_name, view_query: ViewSQL, update=True, force=F
     the new one.
     """
 
-    if "." in view_name:
-        vschema, vname = view_name.split(".", 1)
-    else:
-        vschema, vname = "public", view_name
+    vschema, vname = schema_and_name(view_name)
 
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
