@@ -94,6 +94,17 @@ def _drop_mat_view(cursor, view_name):
 def create_materialized_view(
     connection, view_name, view_query: ViewSQL, index=None, with_data=True, check_sql_changed=False
 ):
+    """
+    Create a materialized view on a connection.
+
+    Returns one of statuses EXISTS, UPDATED, CREATED.
+
+    If with_data = False, then the materialized view will get created without data.
+
+    If check_sql_changed = True, then the process will first check if there is a materialized view in the database
+    already with the same SQL, if there is, it will not do anything. Otherwise the materialized view gets dropped
+    and recreated.
+    """
     vschema, vname = schema_and_name(view_name)
 
     cursor_wrapper = connection.cursor()
