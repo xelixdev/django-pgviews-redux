@@ -269,6 +269,19 @@ class PreferredCustomer(pg.MaterializedView):
     post_code = models.CharField(max_length=20)
 ```
 
+#### Conditional materialized views recreate
+
+Since all materialized views are recreated on running `migrate`, it can lead to obsolete recreations even if there
+were no changes to the definition of the view. To prevent this, version 0.7.0 and higher contain a feature which
+checks existing materialized view definition in the database (if the mat. view exists at all) and compares the
+definition with the one currently defined in your `pg.MaterializedView` subclass. If the definition matches
+exactly, the re-create of materialized view is skipped.
+
+This feature is enabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in your Django settings to `True`, 
+which enables the feature when running `migrate`. The command `sync_pgviews` uses this setting as well,
+however it also has switches `--enable-materialized-views-check-sql-changed` and
+`--disable-materialized-views-check-sql-changed` which override this setting for that command.
+
 ### Custom Schema
 
 You can define any table name you wish for your views. They can even live inside your own custom
