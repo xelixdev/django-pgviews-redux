@@ -13,8 +13,6 @@ class Command(BaseCommand):
     help = """Clear Postgres views. Use this before running a migration"""
 
     def handle(self, **options):
-        """
-        """
         for view_cls in apps.get_models():
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
                 continue

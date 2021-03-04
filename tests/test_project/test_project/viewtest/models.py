@@ -7,7 +7,8 @@ from django_pgviews import view
 
 
 class TestModel(models.Model):
-    """Test model with some basic data for running migrate tests against.
+    """
+    Test model with some basic data for running migrate tests against.
     """
 
     name = models.CharField(max_length=100)
