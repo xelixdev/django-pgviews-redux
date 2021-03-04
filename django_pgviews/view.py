@@ -24,13 +24,14 @@ log = logging.getLogger("django_pgviews.view")
 
 
 def hasfield(model_cls, field_name):
-    """Like `hasattr()`, but for model fields.
+    """
+    Like `hasattr()`, but for model fields.
 
-        >>> from django.contrib.auth.models import User
-        >>> hasfield(User, 'password')
-        True
-        >>> hasfield(User, 'foobarbaz')
-        False
+    >>> from django.contrib.auth.models import User
+    >>> hasfield(User, 'password')
+    True
+    >>> hasfield(User, 'foobarbaz')
+    False
     """
     try:
         model_cls._meta.get_field(field_name)
@@ -153,7 +154,8 @@ def clear_view(connection, view_name, materialized=False):
 
 class ViewMeta(models.base.ModelBase):
     def __new__(metacls, name, bases, attrs):
-        """Deal with all of the meta attributes, removing any Django does not want
+        """
+        Deal with all of the meta attributes, removing any Django does not want
         """
         # Get attributes before Django
         dependencies = attrs.pop("dependencies", [])
@@ -204,7 +206,8 @@ else:
 
 
 class View(models.Model, metaclass=ViewMeta):
-    """ Helper for exposing Postgres views as Django models.
+    """
+    Helper for exposing Postgres views as Django models.
     """
 
     _deferred = False
@@ -220,7 +223,8 @@ class View(models.Model, metaclass=ViewMeta):
 
 
 def _realise_projections(app_label, model_name):
-    """Checks whether the model has been loaded and runs
+    """
+    Checks whether the model has been loaded and runs
     realise_deferred_projections() if it has.
     """
     try:
@@ -260,8 +264,7 @@ class ReadOnlyViewManager(models.Manager):
 
 
 class ReadOnlyView(View):
-    """View which cannot be altered
-    """
+    """View which cannot be altered"""
 
     _base_manager = ReadOnlyViewManager()
     objects = ReadOnlyViewManager()
@@ -295,8 +298,7 @@ class MaterializedView(View):
 
 
 class ReadOnlyMaterializedView(MaterializedView):
-    """Read-only version of the materialized view
-    """
+    """Read-only version of the materialized view"""
 
     _base_manager = ReadOnlyViewManager()
     objects = ReadOnlyViewManager()

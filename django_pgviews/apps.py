@@ -7,7 +7,8 @@ log = logging.getLogger("django_pgviews.sync_pgviews")
 
 
 class ViewConfig(apps.AppConfig):
-    """The base configuration for Django PGViews. We use this to setup our
+    """
+    The base configuration for Django PGViews. We use this to setup our
     post_migrate signal handlers.
     """
 
@@ -16,7 +17,8 @@ class ViewConfig(apps.AppConfig):
     verbose_name = "Django Postgres Views"
 
     def sync_pgviews(self, sender, app_config, **kwargs):
-        """Forcibly sync the views.
+        """
+        Forcibly sync the views.
         """
         self.counter = self.counter + 1
         total = len([a for a in apps.apps.get_app_configs() if a.models_module is not None])
@@ -31,6 +33,7 @@ class ViewConfig(apps.AppConfig):
             vs.run(force=True, update=True)
 
     def ready(self):
-        """Find and setup the apps to set the post_migrate hooks for.
+        """
+        Find and setup the apps to set the post_migrate hooks for.
         """
         signals.post_migrate.connect(self.sync_pgviews)

@@ -26,11 +26,13 @@ def create_test_schema(sender, app_config, **kwargs):
 
 
 class ViewTestCase(TestCase):
-    """Run the tests to ensure the post_migrate hooks were called.
+    """
+    Run the tests to ensure the post_migrate hooks were called.
     """
 
     def test_views_have_been_created(self):
-        """Look at the PG View table to ensure views were created.
+        """
+        Look at the PG View table to ensure views were created.
         """
         with closing(connection.cursor()) as cur:
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
@@ -49,7 +51,8 @@ class ViewTestCase(TestCase):
             self.assertEqual(count, 1)
 
     def test_clear_views(self):
-        """Check the PG View table to see that the views were removed.
+        """
+        Check the PG View table to see that the views were removed.
         """
         call_command("clear_pgviews", *[], **{})
         with closing(connection.cursor()) as cur:
@@ -64,7 +67,8 @@ class ViewTestCase(TestCase):
             self.assertEqual(count, 0)
 
     def test_wildcard_projection(self):
-        """Wildcard projections take all fields from a projected model.
+        """
+        Wildcard projections take all fields from a projected model.
         """
         foo_user = auth.models.User.objects.create(username="foo", is_superuser=True)
         foo_user.set_password("blah")
@@ -76,7 +80,8 @@ class ViewTestCase(TestCase):
         self.assertEqual(foo_user.password, foo_superuser.password)
 
     def test_limited_projection(self):
-        """A limited projection only creates the projected fields.
+        """
+        A limited projection only creates the projected fields.
         """
         foo_user = auth.models.User.objects.create(username="foo", is_superuser=True)
         foo_user.set_password("blah")
@@ -89,7 +94,8 @@ class ViewTestCase(TestCase):
         self.assertFalse(getattr(foo_simple, "date_joined", False))
 
     def test_related_delete(self):
-        """Test views do not interfere with deleting the models
+        """
+        Test views do not interfere with deleting the models
         """
         test_model = models.TestModel()
         test_model.name = "Bob"
@@ -97,7 +103,8 @@ class ViewTestCase(TestCase):
         test_model.delete()
 
     def test_materialized_view(self):
-        """Test a materialized view works correctly
+        """
+        Test a materialized view works correctly
         """
         self.assertEqual(
             models.MaterializedRelatedView.objects.count(), 0, "Materialized view should not have anything"
@@ -160,7 +167,8 @@ class ViewTestCase(TestCase):
 
 class DependantViewTestCase(TestCase):
     def test_sync_depending_views(self):
-        """Test the sync_pgviews command for views that depend on other views.
+        """
+        Test the sync_pgviews command for views that depend on other views.
 
         This test drops `viewtest_dependantview` and its dependencies
         and recreates them manually, thereby simulating an old state
@@ -193,7 +201,8 @@ class DependantViewTestCase(TestCase):
                 cur.execute("""SELECT name from viewtest_dependantview;""")
 
     def test_sync_depending_materialized_views(self):
-        """Refresh views that depend on materialized views.
+        """
+        Refresh views that depend on materialized views.
         """
         with closing(connection.cursor()) as cur:
             cur.execute(
