@@ -64,11 +64,16 @@ def realize_deferred_projections(sender, *args, **kwargs):
 models.signals.class_prepared.connect(realize_deferred_projections)
 
 
-def schema_and_name(view_name):
+def _schema_and_name(connection, view_name):
     if "." in view_name:
         return view_name.split(".", 1)
     else:
-        return "public", view_name
+        try:
+            schema_name = connection.schema_name
+        except AttributeError:
+            schema_name = "public"
+
+        return schema_name, view_name
 
 
 def _create_mat_view(cursor, view_name, query, params, with_data):
@@ -105,7 +110,7 @@ def create_materialized_view(
     already with the same SQL, if there is, it will not do anything. Otherwise the materialized view gets dropped
     and recreated.
     """
-    vschema, vname = schema_and_name(view_name)
+    vschema, vname = _schema_and_name(connection, view_name)
 
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
@@ -123,7 +128,9 @@ def create_materialized_view(
 
         if check_sql_changed and view_exists:
             temp_viewname = view_name + "_temp"
-            _, temp_vname = schema_and_name(temp_viewname)
+            _, temp_vname = _schema_and_name(connection, temp_viewname)
+
+            _drop_mat_view(cursor, temp_viewname)
             _create_mat_view(cursor, temp_viewname, query, view_query.params, with_data=False)
 
             cursor.execute(
@@ -167,7 +174,7 @@ def create_view(connection, view_name, view_query: ViewSQL, update=True, force=F
     the new one.
     """
 
-    vschema, vname = schema_and_name(view_name)
+    vschema, vname = _schema_and_name(connection, view_name)
 
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
