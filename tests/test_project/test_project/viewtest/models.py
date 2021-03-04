@@ -71,3 +71,9 @@ class CustomSchemaView(view.ReadOnlyView):
     class Meta:
         managed = False
         db_table = "test_schema.my_custom_view"
+
+
+class MaterializedRelatedViewWithNoData(view.ReadOnlyMaterializedView):
+    sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
+    model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
+    with_data = False
