@@ -11,6 +11,7 @@ from django.apps import apps
 from django.core import exceptions
 from django.db import connection, transaction
 from django.db import models
+from django.db.models import Index
 from django.db.models.query import QuerySet
 
 from django_pgviews.db import get_fields_by_name
@@ -95,6 +96,10 @@ def _drop_mat_view(cursor, view_name):
     cursor.execute("DROP MATERIALIZED VIEW IF EXISTS {0} CASCADE;".format(view_name))
 
 
+def _concurrent_index_name(view_name, concurrent_index):
+    return view_name + "_" + "_".join([s.strip() for s in concurrent_index.split(",")]) + "_index"
+
+
 @transaction.atomic()
 def create_materialized_view(connection, view_cls, check_sql_changed=False):
     """
@@ -160,9 +165,12 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
         log.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
 
         if concurrent_index is not None:
-            index_sub_name = "_".join([s.strip() for s in concurrent_index.split(",")])
             cursor.execute(
-                "CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, concurrent_index)
+                "CREATE UNIQUE INDEX {index_name} ON {view_name} ({concurrent_index})".format(
+                    view_name=view_name,
+                    index_name=_concurrent_index_name(view_name, concurrent_index),
+                    concurrent_index=concurrent_index,
+                )
             )
             log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
 
