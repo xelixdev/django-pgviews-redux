@@ -96,9 +96,7 @@ def _drop_mat_view(cursor, view_name):
 
 
 @transaction.atomic()
-def create_materialized_view(
-    connection, view_name, view_query: ViewSQL, concurrent_index=None, with_data=True, check_sql_changed=False
-):
+def create_materialized_view(connection, view_cls, check_sql_changed=False):
     """
     Create a materialized view on a connection.
 
@@ -110,6 +108,16 @@ def create_materialized_view(
     already with the same SQL, if there is, it will not do anything. Otherwise the materialized view gets dropped
     and recreated.
     """
+    view_name = view_cls._meta.db_table
+    view_query = view_cls.get_sql()
+    concurrent_index = view_cls._concurrent_index
+
+    try:
+        schema_name = connection.schema_name
+        schema_name_log = f"schema {schema_name}"
+    except AttributeError:
+        schema_name_log = "default schema"
+
     vschema, vname = _schema_and_name(connection, view_name)
 
     cursor_wrapper = connection.cursor()
@@ -146,13 +154,24 @@ def create_materialized_view(
 
         if view_exists:
             _drop_mat_view(cursor, view_name)
+            log.info("pgview dropped materialized view %s (%s)", view_name, schema_name_log)
 
-        _create_mat_view(cursor, view_name, query, view_query.params, with_data=with_data)
+        _create_mat_view(cursor, view_name, query, view_query.params, with_data=view_cls.with_data)
+        log.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
+
         if concurrent_index is not None:
             index_sub_name = "_".join([s.strip() for s in concurrent_index.split(",")])
             cursor.execute(
                 "CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, concurrent_index)
             )
+            log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+
+        if view_cls._meta.indexes:
+            schema_editor = connection.schema_editor()
+
+            for index in view_cls._meta.indexes:
+                schema_editor.add_index(view_cls, index)
+                log.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
 
         if view_exists:
             return "UPDATED"

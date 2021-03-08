@@ -63,6 +63,10 @@ class MaterializedRelatedViewWithIndex(view.ReadOnlyMaterializedView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
     model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
 
+    class Meta:
+        managed = False
+        indexes = [models.Index(fields=["model"])]
+
 
 class CustomSchemaView(view.ReadOnlyView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""

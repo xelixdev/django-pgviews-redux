@@ -132,6 +132,28 @@ class ViewTestCase(TestCase):
             "Materialized view should have updated concurrently",
         )
 
+    def test_materialized_view_indexes(self):
+        args = [
+            models.MaterializedRelatedViewWithIndex._meta.db_table,
+            "viewtest_materializedrelatedviewwithindex_id_index",
+        ]
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) FROM pg_indexes WHERE tablename = %s AND indexname = %s",
+                args,
+            )
+            id_index_count = cursor.fetchone()[0]
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM pg_indexes WHERE tablename = %s AND indexname != %s",
+                args,
+            )
+            other_index_count = cursor.fetchone()[0]
+
+        self.assertEqual(id_index_count, 1)
+        self.assertEqual(other_index_count, 1)
+
     def test_materialized_view_with_no_data(self):
         """
         Test a materialized view with no data works correctly
