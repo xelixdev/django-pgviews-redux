@@ -246,10 +246,40 @@ def customer_saved(sender, action=None, instance=None, **kwargs):
     PreferredCustomer.refresh(concurrently=True)
 ```
 
+#### Indexes
+
+As the materialized view isn't defined through the usual Django model fields, any indexes defined there won't be 
+created on the materialized view. Luckily Django provides a Meta option called `indexes` which can be used to add custom
+indexes to models. `pg_views` supports defining indexes on materialized views using this option.
+
+In the following example, one index will be created, on the `name` column. The `db_index=True` on the field definition
+for `post_code` will get ignored.
+
+```python
+from django_pgviews import view as pg
+
+
+VIEW_SQL = """
+    SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE
+"""
+
+class PreferredCustomer(pg.MaterializedView):
+    sql = VIEW_SQL
+
+    name = models.CharField(max_length=100)
+    post_code = models.CharField(max_length=20, db_index=True)
+    
+    class Meta:
+        managed = False  # don't forget this, otherwise Django will think it's a regular model
+        indexes = [
+             models.Index(fields=["name"]),
+        ]
+```
+
 #### WITH NO DATA
 
 Materialized views can be created either with or without data. By default, they are created with data, however
-`pg-views` supports creating materialized views without data, by defining `with_data = False` for the
+`pg_views` supports creating materialized views without data, by defining `with_data = False` for the
 `pg.MaterializedView` class. Such views then do not support querying until the first 
 refresh (raising `django.db.utils.OperationalError`).
 
@@ -281,6 +311,11 @@ This feature is enabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in
 which enables the feature when running `migrate`. The command `sync_pgviews` uses this setting as well,
 however it also has switches `--enable-materialized-views-check-sql-changed` and
 `--disable-materialized-views-check-sql-changed` which override this setting for that command.
+
+This feature also takes into account indexes. When a view is deemed not needing recreating, the process will still
+check the indexes on the table and delete any extra indexes and create any missing invoices. This reconciliation
+is done through the index name, so if you use custom names for your indexes, it might happen that it won't get updated
+on change of the content but not the name.
 
 ### Custom Schema
 
