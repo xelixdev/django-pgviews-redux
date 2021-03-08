@@ -68,12 +68,7 @@ class ViewSyncer(RunBacklog):
             try:
                 if isinstance(view_cls(), MaterializedView):
                     status = create_materialized_view(
-                        connection,
-                        view_cls._meta.db_table,
-                        view_cls.get_sql(),
-                        concurrent_index=view_cls._concurrent_index,
-                        with_data=view_cls.with_data,
-                        check_sql_changed=materialized_views_check_sql_changed,
+                        connection, view_cls, check_sql_changed=materialized_views_check_sql_changed
                     )
                 else:
                     status = create_view(
@@ -106,7 +101,7 @@ class ViewSyncer(RunBacklog):
                 elif status == "FORCED":
                     msg = "forced overwrite of existing schema"
                 elif status == "FORCE_REQUIRED":
-                    msg = "exists with incompatible schema, " "--force required to update"
+                    msg = "exists with incompatible schema, --force required to update"
                 else:
                     msg = status
 
