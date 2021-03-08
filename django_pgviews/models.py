@@ -71,7 +71,7 @@ class ViewSyncer(RunBacklog):
                         connection,
                         view_cls._meta.db_table,
                         view_cls.get_sql(),
-                        index=view_cls._concurrent_index,
+                        concurrent_index=view_cls._concurrent_index,
                         with_data=view_cls.with_data,
                         check_sql_changed=materialized_views_check_sql_changed,
                     )

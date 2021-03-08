@@ -97,7 +97,7 @@ def _drop_mat_view(cursor, view_name):
 
 @transaction.atomic()
 def create_materialized_view(
-    connection, view_name, view_query: ViewSQL, index=None, with_data=True, check_sql_changed=False
+    connection, view_name, view_query: ViewSQL, concurrent_index=None, with_data=True, check_sql_changed=False
 ):
     """
     Create a materialized view on a connection.
@@ -148,9 +148,11 @@ def create_materialized_view(
             _drop_mat_view(cursor, view_name)
 
         _create_mat_view(cursor, view_name, query, view_query.params, with_data=with_data)
-        if index is not None:
-            index_sub_name = "_".join([s.strip() for s in index.split(",")])
-            cursor.execute("CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, index))
+        if concurrent_index is not None:
+            index_sub_name = "_".join([s.strip() for s in concurrent_index.split(",")])
+            cursor.execute(
+                "CREATE UNIQUE INDEX {0}_{1}_index ON {0} ({2})".format(view_name, index_sub_name, concurrent_index)
+            )
 
         if view_exists:
             return "UPDATED"
