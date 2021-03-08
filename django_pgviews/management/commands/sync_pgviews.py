@@ -27,6 +27,7 @@ class Command(BaseCommand):
             help="Force replacement of pre-existing views where breaking changes have been made to the schema.",
         )
         parser.add_argument(
+            "-E",
             "--enable-materialized-views-check-sql-changed",
             action="store_true",
             dest="materialized_views_check_sql_changed",
@@ -38,6 +39,7 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "-D",
             "--disable-materialized-views-check-sql-changed",
             action="store_false",
             dest="materialized_views_check_sql_changed",
