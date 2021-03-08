@@ -11,7 +11,6 @@ from django.apps import apps
 from django.core import exceptions
 from django.db import connection, transaction
 from django.db import models
-from django.db.models import Index
 from django.db.models.query import QuerySet
 
 from django_pgviews.db import get_fields_by_name
@@ -100,6 +99,55 @@ def _concurrent_index_name(view_name, concurrent_index):
     return view_name + "_" + "_".join([s.strip() for s in concurrent_index.split(",")]) + "_index"
 
 
+def _create_concurrent_index(cursor, view_name, concurrent_index):
+    cursor.execute(
+        "CREATE UNIQUE INDEX {index_name} ON {view_name} ({concurrent_index})".format(
+            view_name=view_name,
+            index_name=_concurrent_index_name(view_name, concurrent_index),
+            concurrent_index=concurrent_index,
+        )
+    )
+
+
+def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
+    """
+    This function gets called when a materialized view is deemed not needing a re-create. That is however only a part
+    of the story, since that checks just the SQL of the view itself. The second part is the indexes.
+    This function gets the current indexes on the materialized view and reconciles them with the indexes that
+    should be in the view, dropping extra ones and creating new ones.
+    """
+    view_name = view_cls._meta.db_table
+    concurrent_index = view_cls._concurrent_index
+    indexes = view_cls._meta.indexes
+    vschema, vname = _schema_and_name(connection, view_name)
+
+    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s AND schemaname = %s", [vname, vschema])
+
+    existing_indexes = set(x[0] for x in cursor.fetchall())
+    required_indexes = set(x.name for x in indexes)
+
+    if view_cls._concurrent_index is not None:
+        concurrent_index_name = _concurrent_index_name(view_name, concurrent_index)
+        required_indexes.add(concurrent_index_name)
+    else:
+        concurrent_index_name = None
+
+    for index_name in existing_indexes - required_indexes:
+        cursor.execute(f"DROP INDEX {index_name}")
+        log.info("pgview dropped index %s on view %s (%s)", index_name, view_name, schema_name_log)
+
+    for index_name in required_indexes - existing_indexes:
+        if index_name == concurrent_index_name:
+            _create_concurrent_index(cursor, view_name, concurrent_index)
+            log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+        else:
+            for index in indexes:
+                if index.name == index_name:
+                    connection.schema_editor().add_index(view_cls, index)
+                    log.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
+                    break
+
+
 @transaction.atomic()
 def create_materialized_view(connection, view_cls, check_sql_changed=False):
     """
@@ -155,6 +203,7 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
             _drop_mat_view(cursor, temp_viewname)
 
             if definitions[0] == definitions[1]:
+                _ensure_indexes(connection, cursor, view_cls, schema_name_log)
                 return "EXISTS"
 
         if view_exists:
@@ -165,13 +214,7 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
         log.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
 
         if concurrent_index is not None:
-            cursor.execute(
-                "CREATE UNIQUE INDEX {index_name} ON {view_name} ({concurrent_index})".format(
-                    view_name=view_name,
-                    index_name=_concurrent_index_name(view_name, concurrent_index),
-                    concurrent_index=concurrent_index,
-                )
-            )
+            _create_concurrent_index(cursor, view_name, concurrent_index)
             log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
 
         if view_cls._meta.indexes:

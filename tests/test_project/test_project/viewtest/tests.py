@@ -27,6 +27,11 @@ def create_test_schema(sender, app_config, **kwargs):
         cursor.execute(command)
 
 
+def get_list_of_indexes(cursor, cls):
+    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s", [cls._meta.db_table])
+    return set(x[0] for x in cursor.fetchall())
+
+
 class ViewTestCase(TestCase):
     """
     Run the tests to ensure the post_migrate hooks were called.
@@ -133,26 +138,30 @@ class ViewTestCase(TestCase):
         )
 
     def test_materialized_view_indexes(self):
-        args = [
-            models.MaterializedRelatedViewWithIndex._meta.db_table,
-            "viewtest_materializedrelatedviewwithindex_id_index",
-        ]
+        with connection.cursor() as cursor:
+            orig_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
+
+            self.assertIn("viewtest_materializedrelatedviewwithindex_id_index", orig_indexes)
+            self.assertEqual(len(orig_indexes), 2)
+
+            for index_name in orig_indexes:
+                cursor.execute(f"DROP INDEX {index_name}")
+
+            cursor.execute(
+                "CREATE UNIQUE INDEX viewtest_materializedrelatedviewwithindex_concurrent_idx "
+                "ON viewtest_materializedrelatedviewwithindex (id)"
+            )
+            cursor.execute(
+                "CREATE INDEX viewtest_materializedrelatedviewwithindex_some_idx "
+                "ON viewtest_materializedrelatedviewwithindex (model_id)"
+            )
+
+        call_command("sync_pgviews", materialized_views_check_sql_changed=True)
 
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT COUNT(*) FROM pg_indexes WHERE tablename = %s AND indexname = %s",
-                args,
-            )
-            id_index_count = cursor.fetchone()[0]
+            new_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
 
-            cursor.execute(
-                "SELECT COUNT(*) FROM pg_indexes WHERE tablename = %s AND indexname != %s",
-                args,
-            )
-            other_index_count = cursor.fetchone()[0]
-
-        self.assertEqual(id_index_count, 1)
-        self.assertEqual(other_index_count, 1)
+            self.assertEqual(new_indexes, orig_indexes)
 
     def test_materialized_view_with_no_data(self):
         """
