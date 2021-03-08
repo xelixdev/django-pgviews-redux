@@ -9,9 +9,13 @@ from django_pgviews.view import create_view, View, MaterializedView, create_mate
 log = logging.getLogger("django_pgviews.sync_pgviews")
 
 
-class ViewSyncer(object):
-    def run(self, force, update, materialized_views_check_sql_changed=False, **options):
-        self.synced = []
+class RunBacklog(object):
+    def __init__(self) -> None:
+        super().__init__()
+        self.finished = []
+
+    def run(self, **kwargs):
+        self.finished = []
         backlog = []
         for view_cls in apps.get_models():
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
@@ -20,14 +24,26 @@ class ViewSyncer(object):
         loop = 0
         while len(backlog) > 0 and loop < 10:
             loop += 1
-            backlog = self.run_backlog(backlog, force, update, materialized_views_check_sql_changed)
+            backlog = self.run_backlog(backlog, **kwargs)
 
         if loop >= 10:
             log.warning("pgviews dependencies hit limit. Check if your model dependencies are correct")
-        else:
+            return False
+
+        return True
+
+    def run_backlog(self, backlog, **kwargs):
+        raise NotImplementedError
+
+
+class ViewSyncer(RunBacklog):
+    def run(self, force, update, materialized_views_check_sql_changed=False, **options):
+        if super().run(
+            force=force, update=update, materialized_views_check_sql_changed=materialized_views_check_sql_changed
+        ):
             all_views_synced.send(sender=None)
 
-    def run_backlog(self, models, force, update, materialized_views_check_sql_changed):
+    def run_backlog(self, backlog, *, force, update, materialized_views_check_sql_changed, **kwargs):
         """Installs the list of models given from the previous backlog
 
         If the correct dependent views have not been installed, the view
@@ -35,15 +51,17 @@ class ViewSyncer(object):
 
         Eventually we get to a point where all dependencies are sorted.
         """
-        backlog = []
-        for view_cls in models:
+        new_backlog = []
+        for view_cls in backlog:
             skip = False
             name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
             for dep in view_cls._dependencies:
-                if dep not in self.synced:
+                if dep not in self.finished:
                     skip = True
+                    break
+
             if skip is True:
-                backlog.append(view_cls)
+                new_backlog.append(view_cls)
                 log.info("Putting pgview at back of queue: %s", name)
                 continue  # Skip
 
@@ -73,7 +91,7 @@ class ViewSyncer(object):
                     status=status,
                     has_changed=status not in ("EXISTS", "FORCE_REQUIRED"),
                 )
-                self.synced.append(name)
+                self.finished.append(name)
             except Exception as exc:
                 exc.view_cls = view_cls
                 exc.python_name = name
@@ -93,4 +111,32 @@ class ViewSyncer(object):
                     msg = status
 
                 log.info("pgview %s %s", name, msg)
-        return backlog
+        return new_backlog
+
+
+class ViewRefresher(RunBacklog):
+    def run(self, concurrently, **kwargs):
+        return super().run(concurrently=concurrently, **kwargs)
+
+    def run_backlog(self, backlog, *, concurrently, **kwargs):
+        new_backlog = []
+        for view_cls in backlog:
+            skip = False
+            name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
+            for dep in view_cls._dependencies:
+                if dep not in self.finished:
+                    skip = True
+                    break
+
+            if skip is True:
+                new_backlog.append(view_cls)
+                log.info("Putting pgview at back of queue: %s", name)
+                continue  # Skip
+
+            if issubclass(view_cls, MaterializedView):
+                view_cls.refresh(concurrently=concurrently)
+                log.info("pgview %s refreshed", name)
+
+            self.finished.append(name)
+
+        return new_backlog

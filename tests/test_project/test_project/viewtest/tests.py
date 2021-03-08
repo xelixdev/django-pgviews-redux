@@ -218,10 +218,30 @@ class ViewTestCase(TestCase):
 
         models.TestModel.objects.create(name="Test")
 
-        print("Run migrate\n")
         call_command("migrate")
 
         self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+
+    def test_refresh_pgviews(self):
+        models.TestModel.objects.create(name="Test")
+
+        call_command("refresh_pgviews")
+
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+        self.assertEqual(models.DependantView.objects.count(), 1)
+        self.assertEqual(models.DependantMaterializedView.objects.count(), 1)
+        self.assertEqual(models.MaterializedRelatedViewWithIndex.objects.count(), 1)
+        self.assertEqual(models.MaterializedRelatedViewWithNoData.objects.count(), 1)
+
+        models.TestModel.objects.create(name="Test 2")
+
+        call_command("refresh_pgviews", concurrently=True)
+
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 2)
+        self.assertEqual(models.DependantView.objects.count(), 2)
+        self.assertEqual(models.DependantMaterializedView.objects.count(), 2)
+        self.assertEqual(models.MaterializedRelatedViewWithIndex.objects.count(), 2)
+        self.assertEqual(models.MaterializedRelatedViewWithNoData.objects.count(), 2)
 
 
 class TestMaterializedViewsCheckSQLSettings(TestCase):
