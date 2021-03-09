@@ -313,7 +313,7 @@ however it also has switches `--enable-materialized-views-check-sql-changed` and
 `--disable-materialized-views-check-sql-changed` which override this setting for that command.
 
 This feature also takes into account indexes. When a view is deemed not needing recreating, the process will still
-check the indexes on the table and delete any extra indexes and create any missing invoices. This reconciliation
+check the indexes on the table and delete any extra indexes and create any missing indexes. This reconciliation
 is done through the index name, so if you use custom names for your indexes, it might happen that it won't get updated
 on change of the content but not the name.
 
