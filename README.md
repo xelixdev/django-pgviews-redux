@@ -427,31 +427,13 @@ Provides args:
     <tr>
       <td>3.1</td>
       <td>0.6.1</td>
+    <tr>
+      <td>3.2</td>
+      <td>0.7.1</td>
     </tr>
   </tbody>
 </table>
 
-### Django 1.7 Note
-
-Django 1.7 changed how models are loaded so that it's no longer possible to do
-`sql = str(User.objects.all().query)` because the dependent models aren't
-yet loaded by Django.
-
-### Django 1.9 Note
-
-You now have to use the `.view` module directly.
-
-### Django 1.10 Note
-
-When updating to Django 1.10, if you see `AttributeError: can't set attribute`
-when you try to migrate or run tests, you need to check your migrations for
-where `_base_manager` or `_default_manager` get set on the model and replace it
-with `objects` inside the migration.
-
-This also applies to [Django MPTT](https://django-mptt.github.io/django-mptt/upgrade.html#id1)
-who have covered this in a bit more detail.
-
 ## Python 3 Support
 
 Django PGViews Redux only supports Python 3.6+.
-
