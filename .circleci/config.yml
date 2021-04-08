@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: themattrix/tox
+      - image: mikicz/tox
         environment: # environment variables for primary container
           DATABASE_URL: postgresql://root@localhost/circle_test?sslmode=disable
           DB_USER: root
