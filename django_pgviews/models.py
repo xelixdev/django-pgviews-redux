@@ -6,7 +6,7 @@ from django.db import connection
 from django_pgviews.signals import view_synced, all_views_synced
 from django_pgviews.view import create_view, View, MaterializedView, create_materialized_view
 
-log = logging.getLogger("django_pgviews.sync_pgviews")
+logger = logging.getLogger("django_pgviews.sync_pgviews")
 
 
 class RunBacklog(object):
@@ -27,7 +27,7 @@ class RunBacklog(object):
             backlog = self.run_backlog(backlog, **kwargs)
 
         if loop >= 10:
-            log.warning("pgviews dependencies hit limit. Check if your model dependencies are correct")
+            logger.warning("pgviews dependencies hit limit. Check if your model dependencies are correct")
             return False
 
         return True
@@ -62,7 +62,7 @@ class ViewSyncer(RunBacklog):
 
             if skip is True:
                 new_backlog.append(view_cls)
-                log.info("Putting pgview at back of queue: %s", name)
+                logger.info("Putting pgview at back of queue: %s", name)
                 continue  # Skip
 
             try:
@@ -105,7 +105,7 @@ class ViewSyncer(RunBacklog):
                 else:
                     msg = status
 
-                log.info("pgview %s %s", name, msg)
+                logger.info("pgview %s %s", name, msg)
         return new_backlog
 
 
@@ -125,12 +125,12 @@ class ViewRefresher(RunBacklog):
 
             if skip is True:
                 new_backlog.append(view_cls)
-                log.info("Putting pgview at back of queue: %s", name)
+                logger.info("Putting pgview at back of queue: %s", name)
                 continue  # Skip
 
             if issubclass(view_cls, MaterializedView):
                 view_cls.refresh(concurrently=concurrently)
-                log.info("pgview %s refreshed", name)
+                logger.info("pgview %s refreshed", name)
 
             self.finished.append(name)
 
