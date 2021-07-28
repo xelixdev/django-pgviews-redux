@@ -1,10 +1,6 @@
-import logging
-
 from django.core.management.base import BaseCommand
 
 from django_pgviews.models import ViewRefresher
-
-log = logging.getLogger("django_pgviews.refresh_pgviews")
 
 
 class Command(BaseCommand):

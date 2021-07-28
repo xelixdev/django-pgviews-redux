@@ -1,11 +1,7 @@
-import logging
-
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from django_pgviews.models import ViewSyncer
-
-log = logging.getLogger("django_pgviews.sync_pgviews")
 
 
 class Command(BaseCommand):

@@ -20,7 +20,7 @@ FIELD_SPEC_RE = re.compile(FIELD_SPEC_REGEX)
 
 ViewSQL = collections.namedtuple("ViewSQL", "query,params")
 
-log = logging.getLogger("django_pgviews.view")
+logger = logging.getLogger("django_pgviews.view")
 
 
 def hasfield(model_cls, field_name):
@@ -134,17 +134,17 @@ def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
 
     for index_name in existing_indexes - required_indexes:
         cursor.execute(f"DROP INDEX {index_name}")
-        log.info("pgview dropped index %s on view %s (%s)", index_name, view_name, schema_name_log)
+        logger.info("pgview dropped index %s on view %s (%s)", index_name, view_name, schema_name_log)
 
     for index_name in required_indexes - existing_indexes:
         if index_name == concurrent_index_name:
             _create_concurrent_index(cursor, view_name, concurrent_index)
-            log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+            logger.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
         else:
             for index in indexes:
                 if index.name == index_name:
                     connection.schema_editor().add_index(view_cls, index)
-                    log.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
+                    logger.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
                     break
 
 
@@ -208,21 +208,21 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
 
         if view_exists:
             _drop_mat_view(cursor, view_name)
-            log.info("pgview dropped materialized view %s (%s)", view_name, schema_name_log)
+            logger.info("pgview dropped materialized view %s (%s)", view_name, schema_name_log)
 
         _create_mat_view(cursor, view_name, query, view_query.params, with_data=view_cls.with_data)
-        log.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
+        logger.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
 
         if concurrent_index is not None:
             _create_concurrent_index(cursor, view_name, concurrent_index)
-            log.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+            logger.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
 
         if view_cls._meta.indexes:
             schema_editor = connection.schema_editor()
 
             for index in view_cls._meta.indexes:
                 schema_editor.add_index(view_cls, index)
-                log.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
+                logger.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
 
         if view_exists:
             return "UPDATED"
