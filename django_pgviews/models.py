@@ -7,6 +7,7 @@ from django_pgviews.signals import view_synced, all_views_synced
 from django_pgviews.view import create_view, View, MaterializedView, create_materialized_view
 
 logger = logging.getLogger("django_pgviews.sync_pgviews")
+exists_logger = logging.getLogger("django_pgviews.sync_pgviews.exists")
 
 
 class RunBacklog(object):
@@ -92,12 +93,15 @@ class ViewSyncer(RunBacklog):
                 exc.python_name = name
                 raise
             else:
+                use_logger = logger
+
                 if status == "CREATED":
                     msg = "created"
                 elif status == "UPDATED":
                     msg = "updated"
                 elif status == "EXISTS":
                     msg = "already exists, skipping"
+                    use_logger = exists_logger
                 elif status == "FORCED":
                     msg = "forced overwrite of existing schema"
                 elif status == "FORCE_REQUIRED":
@@ -105,7 +109,7 @@ class ViewSyncer(RunBacklog):
                 else:
                     msg = status
 
-                logger.info("pgview %s %s", name, msg)
+                use_logger.info("pgview %s %s", name, msg)
         return new_backlog
 
 
