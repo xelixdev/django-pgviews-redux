@@ -3,6 +3,8 @@
 # Virtualenvs for testing
 .venv
 venv/
+.direnv
+.envrc
 
 # Temporary testing directories
 test__*

@@ -9,7 +9,7 @@ import django
 import psycopg2
 from django.apps import apps
 from django.core import exceptions
-from django.db import connection, transaction
+from django.db import connections, router, transaction
 from django.db import models
 from django.db.models.query import QuerySet
 
@@ -371,6 +371,18 @@ class View(models.Model, metaclass=ViewMeta):
     def get_sql(cls):
         return ViewSQL(cls.sql, None)
 
+    @classmethod
+    def get_view_connection(cls, using):
+        """
+        Returns connection for "using" database if migrations are allowed (via
+        router). Returns None if migrations are not allowed to indicate view
+        should not be used on the specified database.
+
+        Overwrite this method in subclass to customize, if needed.
+        """
+        if router.allow_migrate(using, cls._meta.app_label):
+            return connections[using]
+
     class Meta:
         abstract = True
         managed = False
@@ -438,7 +450,11 @@ class MaterializedView(View):
 
     @classmethod
     def refresh(self, concurrently=False):
-        cursor_wrapper = connection.cursor()
+        conn = self.get_view_connection(using=router.db_for_write(self))
+        if not conn:
+            logger.warning("Failed to find connection to refresh %s", self)
+            return
+        cursor_wrapper = conn.cursor()
         cursor = cursor_wrapper.cursor
         try:
             if self._concurrent_index is not None and concurrently:

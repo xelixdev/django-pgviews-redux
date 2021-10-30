@@ -382,6 +382,25 @@ Provides args:
 * `sender` - Always `None`
 
 
+### Multiple databases
+
+django-pgviews can use multiple databases.  Similar to Django's `migrate`
+management command, our commands (`clear_pgviews`, `refresh_pgviews`,
+`sync_pgviews`) operate on one database at a time. You can specify which
+database to synchronize by providing the `--database` option. For example:
+
+```shell
+python manage.py sync_pgviews  # uses default db
+python manage.py sync_pgviews --database=myotherdb
+```
+
+Unless using custom routers, django-pgviews will sync all views to the specified
+database. If you want to interact with multiple databases automatically, you'll
+need to take some additional steps. Please refer to Django's [Automatic database
+routing](https://docs.djangoproject.com/en/3.2/topics/db/multi-db/#automatic-database-routing)
+to pin views to specific databases.
+
+
 ## Django Compatibility
 
 <table>

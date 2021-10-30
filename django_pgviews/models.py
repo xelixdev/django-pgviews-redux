@@ -1,7 +1,6 @@
 import logging
 
 from django.apps import apps
-from django.db import connection
 
 from django_pgviews.signals import view_synced, all_views_synced
 from django_pgviews.view import create_view, View, MaterializedView, create_materialized_view
@@ -38,13 +37,16 @@ class RunBacklog(object):
 
 
 class ViewSyncer(RunBacklog):
-    def run(self, force, update, materialized_views_check_sql_changed=False, **options):
+    def run(self, force, update, using, materialized_views_check_sql_changed=False, **options):
         if super().run(
-            force=force, update=update, materialized_views_check_sql_changed=materialized_views_check_sql_changed
+            force=force,
+            update=update,
+            using=using,
+            materialized_views_check_sql_changed=materialized_views_check_sql_changed,
         ):
-            all_views_synced.send(sender=None)
+            all_views_synced.send(sender=None, using=using)
 
-    def run_backlog(self, backlog, *, force, update, materialized_views_check_sql_changed, **kwargs):
+    def run_backlog(self, backlog, *, force, update, using, materialized_views_check_sql_changed, **kwargs):
         """Installs the list of models given from the previous backlog
 
         If the correct dependent views have not been installed, the view
@@ -67,6 +69,10 @@ class ViewSyncer(RunBacklog):
                 continue  # Skip
 
             try:
+                connection = view_cls.get_view_connection(using=using)
+                if not connection:
+                    logger.info("Skipping pgview %s (migrations not allowed on %s)", name, using)
+                    continue  # Skip
                 if isinstance(view_cls(), MaterializedView):
                     status = create_materialized_view(
                         connection, view_cls, check_sql_changed=materialized_views_check_sql_changed
@@ -86,6 +92,7 @@ class ViewSyncer(RunBacklog):
                     force=force,
                     status=status,
                     has_changed=status not in ("EXISTS", "FORCE_REQUIRED"),
+                    using=using,
                 )
                 self.finished.append(name)
             except Exception as exc:
@@ -114,10 +121,10 @@ class ViewSyncer(RunBacklog):
 
 
 class ViewRefresher(RunBacklog):
-    def run(self, concurrently, **kwargs):
-        return super().run(concurrently=concurrently, **kwargs)
+    def run(self, concurrently, using, **kwargs):
+        return super().run(concurrently=concurrently, using=using, **kwargs)
 
-    def run_backlog(self, backlog, *, concurrently, **kwargs):
+    def run_backlog(self, backlog, *, concurrently, using, **kwargs):
         new_backlog = []
         for view_cls in backlog:
             skip = False
@@ -131,6 +138,11 @@ class ViewRefresher(RunBacklog):
                 new_backlog.append(view_cls)
                 logger.info("Putting pgview at back of queue: %s", name)
                 continue  # Skip
+
+            # Don't refresh views not associated with this database
+            connection = view_cls.get_view_connection(using=using)
+            if not connection:
+                continue
 
             if issubclass(view_cls, MaterializedView):
                 view_cls.refresh(concurrently=concurrently)

@@ -16,7 +16,7 @@ class ViewConfig(apps.AppConfig):
     name = "django_pgviews"
     verbose_name = "Django Postgres Views"
 
-    def sync_pgviews(self, sender, app_config, **kwargs):
+    def sync_pgviews(self, sender, app_config, using, **kwargs):
         """
         Forcibly sync the views.
         """
@@ -35,6 +35,7 @@ class ViewConfig(apps.AppConfig):
                 force=True,
                 update=True,
                 materialized_views_check_sql_changed=getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", False),
+                using=using,
             )
             self.counter = 0
 
