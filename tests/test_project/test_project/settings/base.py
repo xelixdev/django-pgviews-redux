@@ -20,7 +20,16 @@ DATABASES = {
         "PASSWORD": "password",
         "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         "PORT": "",  # Set to empty string for default.
-    }
+    },
+    "weather_db": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",  # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
+        "NAME": "django_pgviews_weatherdb",  # Or path to database file if using sqlite3.
+        # The following settings are not used with sqlite3:
+        "USER": "django_pgviews",
+        "PASSWORD": "password",
+        "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
+        "PORT": "",  # Set to empty string for default.
+    },
 }
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -128,6 +137,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
     "django_pgviews",
     "test_project.viewtest",
+    "test_project.multidbtest",
 )
 
 # A sample logging configuration. The only tangible logging

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.db import connection
+from django.db import connection, connections, DEFAULT_DB_ALIAS
 from django.db.utils import OperationalError
 from django.db.models import signals
 from django.dispatch import receiver
@@ -21,9 +21,9 @@ from .models import LatestSuperusers
 
 
 @receiver(signals.post_migrate)
-def create_test_schema(sender, app_config, **kwargs):
+def create_test_schema(sender, app_config, using, **kwargs):
     command = "CREATE SCHEMA IF NOT EXISTS {};".format("test_schema")
-    with connection.cursor() as cursor:
+    with connections[using].cursor() as cursor:
         cursor.execute(command)
 
 
@@ -192,7 +192,9 @@ class ViewTestCase(TestCase):
             synced_views.append(sender)
             if sender in expected:
                 expected_kwargs = expected.pop(sender)
-                self.assertEqual(dict(expected_kwargs, update=False, force=False, signal=view_synced), kwargs)
+                self.assertEqual(
+                    dict(expected_kwargs, update=False, force=False, signal=view_synced, using=DEFAULT_DB_ALIAS), kwargs
+                )
 
         @receiver(all_views_synced)
         def on_all_views_synced(sender, **kwargs):
@@ -201,7 +203,7 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 10)
+        self.assertEqual(len(synced_views), 11)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
 
