@@ -7,10 +7,12 @@ jobs:
           DATABASE_URL: postgresql://root@localhost/circle_test?sslmode=disable
           DB_USER: root
           DB_NAME: circle_test
-      - image: circleci/postgres:9.6.2 # an example of how to specify a service container
+          DB_PASSWORD: "password"
+      - image: circleci/postgres:10 # an example of how to specify a service container
         environment:
           POSTGRES_USER: root
           POSTGRES_DB: circle_test
+          POSTGRES_PASSWORD: "password"
     steps:
       - checkout
       - run: apt-get update && apt-get install -y libpq-dev
