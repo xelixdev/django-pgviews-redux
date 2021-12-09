@@ -450,6 +450,10 @@ to pin views to specific databases.
       <td>3.2</td>
       <td>0.7.1</td>
     </tr>
+    <tr>
+      <td>4.0</td>
+      <td>0.8.1</td>
+    </tr>
   </tbody>
 </table>
 
