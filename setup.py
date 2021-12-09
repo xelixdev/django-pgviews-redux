@@ -13,7 +13,7 @@ else:
 
 setup(
     name="django-pgviews-redux",
-    version="0.8.0",
+    version="0.8.1",
     description="Create and manage Postgres SQL Views in Django",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
@@ -35,5 +35,6 @@ setup(
         "Framework :: Django :: 2.2",
         "Framework :: Django :: 3.1",
         "Framework :: Django :: 3.2",
+        "Framework :: Django :: 4.0",
     ],
 )
