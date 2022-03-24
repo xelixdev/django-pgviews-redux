@@ -11,6 +11,7 @@ from django.apps import apps
 from django.core import exceptions
 from django.db import connections, router, transaction
 from django.db import models
+from django.db.backends.postgresql.schema import DatabaseSchemaEditor
 from django.db.models.query import QuerySet
 
 from django_pgviews.db import get_fields_by_name
@@ -96,7 +97,8 @@ def _drop_mat_view(cursor, view_name):
 
 
 def _concurrent_index_name(view_name, concurrent_index):
-    return view_name + "_" + "_".join([s.strip() for s in concurrent_index.split(",")]) + "_index"
+    # replace . with _ in view_name in case the table is in a schema
+    return view_name.replace(".", "_") + "_" + "_".join([s.strip() for s in concurrent_index.split(",")]) + "_index"
 
 
 def _create_concurrent_index(cursor, view_name, concurrent_index):
@@ -107,6 +109,21 @@ def _create_concurrent_index(cursor, view_name, concurrent_index):
             concurrent_index=concurrent_index,
         )
     )
+
+
+class CustomSchemaEditor(DatabaseSchemaEditor):
+    def _create_index_sql(self, *args, **kwargs):
+        """
+        Override to handle indexes in custom schemas, when the schema is explicitly set.
+        """
+        statement = super()._create_index_sql(*args, **kwargs)
+
+        model = args[0]
+
+        if "." in model._meta.db_table:  # by default the table it's quoted, but we need it non-quoted
+            statement.parts["table"] = model._meta.db_table
+
+        return statement
 
 
 def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
@@ -133,8 +150,10 @@ def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
         concurrent_index_name = None
 
     for index_name in existing_indexes - required_indexes:
-        cursor.execute(f"DROP INDEX {index_name}")
+        cursor.execute(f"DROP INDEX {vschema}.{index_name}")
         logger.info("pgview dropped index %s on view %s (%s)", index_name, view_name, schema_name_log)
+
+    schema_editor: DatabaseSchemaEditor = CustomSchemaEditor(connection)
 
     for index_name in required_indexes - existing_indexes:
         if index_name == concurrent_index_name:
@@ -143,7 +162,7 @@ def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
         else:
             for index in indexes:
                 if index.name == index_name:
-                    connection.schema_editor().add_index(view_cls, index)
+                    schema_editor.add_index(view_cls, index)
                     logger.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
                     break
 
@@ -218,7 +237,7 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
             logger.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
 
         if view_cls._meta.indexes:
-            schema_editor = connection.schema_editor()
+            schema_editor = CustomSchemaEditor(connection)
 
             for index in view_cls._meta.indexes:
                 schema_editor.add_index(view_cls, index)

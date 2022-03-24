@@ -15,6 +15,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from django_pgviews.signals import view_synced, all_views_synced
+from django_pgviews.view import _schema_and_name
 
 from . import models
 from .models import LatestSuperusers
@@ -28,7 +29,9 @@ def create_test_schema(sender, app_config, using, **kwargs):
 
 
 def get_list_of_indexes(cursor, cls):
-    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s", [cls._meta.db_table])
+    schema, table = _schema_and_name(cursor.connection, cls._meta.db_table)
+
+    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s AND schemaname = %s", [table, schema])
     return set(x[0] for x in cursor.fetchall())
 
 
@@ -144,6 +147,7 @@ class ViewTestCase(TestCase):
             self.assertIn("viewtest_materializedrelatedviewwithindex_id_index", orig_indexes)
             self.assertEqual(len(orig_indexes), 2)
 
+            # drop current indexes, add some random ones which will get deleted
             for index_name in orig_indexes:
                 cursor.execute(f"DROP INDEX {index_name}")
 
@@ -160,6 +164,32 @@ class ViewTestCase(TestCase):
 
         with connection.cursor() as cursor:
             new_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
+
+            self.assertEqual(new_indexes, orig_indexes)
+
+    def test_materialized_view_schema_indexes(self):
+        with connection.cursor() as cursor:
+            orig_indexes = get_list_of_indexes(cursor, models.CustomSchemaMaterializedRelatedViewWithIndex)
+
+            self.assertEqual(len(orig_indexes), 2)
+            self.assertIn("test_schema_my_custom_view_with_index_id_index", orig_indexes)
+
+            # drop current indexes, add some random ones which will get deleted
+            for index_name in orig_indexes:
+                cursor.execute(f"DROP INDEX test_schema.{index_name}")
+
+            cursor.execute(
+                "CREATE UNIQUE INDEX my_custom_view_with_index_concurrent_idx "
+                "ON test_schema.my_custom_view_with_index (id)"
+            )
+            cursor.execute(
+                "CREATE INDEX my_custom_view_with_index_some_idx ON test_schema.my_custom_view_with_index (model_id)"
+            )
+
+        call_command("sync_pgviews", materialized_views_check_sql_changed=True)
+
+        with connection.cursor() as cursor:
+            new_indexes = get_list_of_indexes(cursor, models.CustomSchemaMaterializedRelatedViewWithIndex)
 
             self.assertEqual(new_indexes, orig_indexes)
 
@@ -203,7 +233,7 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 11)
+        self.assertEqual(len(synced_views), 12)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
 
