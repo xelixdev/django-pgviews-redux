@@ -459,4 +459,4 @@ to pin views to specific databases.
 
 ## Python 3 Support
 
-Django PGViews Redux only supports Python 3.6+.
+Django PGViews Redux only officially supports Python 3.7+, it might work on 3.6, but there's no guarantees.
