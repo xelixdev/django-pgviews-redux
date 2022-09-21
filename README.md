@@ -4,7 +4,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM.
-For of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for Django 2.2+.
+Fork of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for Django 3.2+.
 
 [pg-views]: http://www.postgresql.org/docs/9.1/static/sql-createview.html
 [django-pgviews]: https://github.com/mypebble/django-pgviews
@@ -453,6 +453,10 @@ to pin views to specific databases.
     <tr>
       <td>4.0</td>
       <td>0.8.1</td>
+    </tr>
+    <tr>
+      <td>4.1</td>
+      <td>0.8.4</td>
     </tr>
   </tbody>
 </table>
