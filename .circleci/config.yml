@@ -3,12 +3,12 @@ jobs:
   build:
     docker:
       - image: mikicz/tox
-        environment: # environment variables for primary container
+        environment:
           DATABASE_URL: postgresql://root@localhost/circle_test?sslmode=disable
           DB_USER: root
           DB_NAME: circle_test
           DB_PASSWORD: "password"
-      - image: circleci/postgres:10 # an example of how to specify a service container
+      - image: cimg/postgres:14.5
         environment:
           POSTGRES_USER: root
           POSTGRES_DB: circle_test
