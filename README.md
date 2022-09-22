@@ -1,6 +1,5 @@
 # SQL Views for Postgres
 
-[![Circle CI](https://circleci.com/gh/mikicz/django-pgviews.png)](https://circleci.com/gh/mikicz/django-pgviews)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM.
