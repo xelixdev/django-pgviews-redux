@@ -3,6 +3,7 @@
 from contextlib import closing
 from datetime import timedelta
 
+import psycopg2.errors
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.models import User
@@ -139,6 +140,13 @@ class ViewTestCase(TestCase):
             1,
             "Materialized view should have updated concurrently",
         )
+
+    def test_refresh_missing(self):
+        with connection.cursor() as cursor:
+            cursor.execute("DROP MATERIALIZED VIEW viewtest_materializedrelatedview CASCADE;")
+
+        with self.assertRaises(psycopg2.errors.UndefinedTable):
+            models.MaterializedRelatedView.refresh()
 
     def test_materialized_view_indexes(self):
         with connection.cursor() as cursor:

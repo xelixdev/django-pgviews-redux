@@ -24,7 +24,7 @@ class Command(BaseCommand):
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
                 continue
             python_name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
-            connection = view_cls.get_view_connection(using=database)
+            connection = view_cls.get_view_connection(using=database, restricted_mode=True)
             if not connection:
                 continue
             status = clear_view(

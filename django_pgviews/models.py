@@ -69,7 +69,7 @@ class ViewSyncer(RunBacklog):
                 continue  # Skip
 
             try:
-                connection = view_cls.get_view_connection(using=using)
+                connection = view_cls.get_view_connection(using=using, restricted_mode=True)
                 if not connection:
                     logger.info("Skipping pgview %s (migrations not allowed on %s)", name, using)
                     continue  # Skip
@@ -140,7 +140,7 @@ class ViewRefresher(RunBacklog):
                 continue  # Skip
 
             # Don't refresh views not associated with this database
-            connection = view_cls.get_view_connection(using=using)
+            connection = view_cls.get_view_connection(using=using, restricted_mode=True)
             if not connection:
                 continue
 

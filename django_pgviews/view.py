@@ -373,7 +373,6 @@ if django.VERSION >= (1, 10):
     class BaseManagerMeta:
         base_manager_name = "objects"
 
-
 else:
     BaseManagerMeta = object
 
@@ -391,15 +390,17 @@ class View(models.Model, metaclass=ViewMeta):
         return ViewSQL(cls.sql, None)
 
     @classmethod
-    def get_view_connection(cls, using):
+    def get_view_connection(cls, using, restricted_mode: bool = True):
         """
-        Returns connection for "using" database if migrations are allowed (via
-        router). Returns None if migrations are not allowed to indicate view
-        should not be used on the specified database.
+        Returns connection for "using" database.
+        Operates in two modes, regular mode and restricted mode.
+            In regular mode just returns the connection.
+            In restricted mode, returns None if migrations are not allowed (via router) to indicate view should not be
+              used on the specified database.
 
         Overwrite this method in subclass to customize, if needed.
         """
-        if router.allow_migrate(using, cls._meta.app_label):
+        if not restricted_mode or router.allow_migrate(using, cls._meta.app_label):
             return connections[using]
 
     class Meta:
@@ -469,7 +470,7 @@ class MaterializedView(View):
 
     @classmethod
     def refresh(self, concurrently=False):
-        conn = self.get_view_connection(using=router.db_for_write(self))
+        conn = self.get_view_connection(using=router.db_for_write(self), restricted_mode=False)
         if not conn:
             logger.warning("Failed to find connection to refresh %s", self)
             return
