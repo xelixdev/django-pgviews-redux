@@ -21,7 +21,7 @@ setup(
     author_email="git@mikulaspoul.cz",
     license="Public Domain",
     packages=find_packages(),
-    url="https://github.com/mikicz/django-pgviews",
+    url="https://github.com/xelixdev/django-pgviews-redux",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
