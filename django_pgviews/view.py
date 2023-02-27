@@ -363,18 +363,13 @@ class ViewMeta(models.base.ModelBase):
         return view_cls
 
     def add_to_class(self, name, value):
-        if django.VERSION >= (1, 10) and name == "_base_manager":
+        if name == "_base_manager":
             return
         super(ViewMeta, self).add_to_class(name, value)
 
 
-if django.VERSION >= (1, 10):
-
-    class BaseManagerMeta:
-        base_manager_name = "objects"
-
-else:
-    BaseManagerMeta = object
+class BaseManagerMeta:
+    base_manager_name = "objects"
 
 
 class View(models.Model, metaclass=ViewMeta):

@@ -1,2 +1,1 @@
-# Django 2.2 breaks on psycopg2>=2.9 (https://github.com/psycopg/psycopg2/issues/1293#issuecomment-862835147)
-psycopg2<2.9
+psycopg2>2.9
