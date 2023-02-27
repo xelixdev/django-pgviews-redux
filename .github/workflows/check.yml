@@ -15,15 +15,17 @@ jobs:
       fail-fast: false
       matrix:
         py:
+          - "3.11"
           - "3.10"
           - "3.9"
           - "3.8"
           - "3.7"
         postgres-version:
-          - 11-bullseye
+          # - 11-bullseye - Postgres 11 is still supported, but Django 4.2 doesn't support it anymore, to keep simpler stop testing here
           - 12
           - 13
           - 14
+          - 15
     steps:
       - name: Setup python for test ${{ matrix.py }}
         uses: actions/setup-python@v4
