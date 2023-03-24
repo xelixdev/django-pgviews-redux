@@ -3,14 +3,15 @@
 import collections
 import copy
 import logging
+import os
 import re
 
 import django
 import psycopg2
 from django.apps import apps
+from django.conf import settings
 from django.core import exceptions
-from django.db import connections, router, transaction
-from django.db import models
+from django.db import connections, models, router, transaction
 from django.db.backends.postgresql.schema import DatabaseSchemaEditor
 from django.db.models.query import QuerySet
 
@@ -69,12 +70,16 @@ def _schema_and_name(connection, view_name):
     if "." in view_name:
         return view_name.split(".", 1)
     else:
-        try:
+        if getattr(connection, "schema_name", None):
             schema_name = connection.schema_name
-        except AttributeError:
+        elif getattr(settings, "DEFAULT_SCHEMA", None):
+            schema_name = settings.DEFAULT_SCHEMA
+        elif getattr(os.environ, "PG_DEFAULT_VIEW_SCHEMA", None):
+            schema_name = os.environ["PG_DEFAULT_VIEW_SCHEMA"]
+        else:
             schema_name = "public"
 
-        return schema_name, view_name
+    return schema_name, view_name
 
 
 def _create_mat_view(cursor, view_name, query, params, with_data):
