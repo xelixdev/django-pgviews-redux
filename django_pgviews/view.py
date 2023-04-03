@@ -6,7 +6,6 @@ import logging
 import re
 
 import django
-import psycopg2
 from django.apps import apps
 from django.core import exceptions
 from django.db import connections, router, transaction
@@ -14,7 +13,9 @@ from django.db import models
 from django.db.backends.postgresql.schema import DatabaseSchemaEditor
 from django.db.models.query import QuerySet
 
+from django_pgviews.compat import ProgrammingError
 from django_pgviews.db import get_fields_by_name
+
 
 FIELD_SPEC_REGEX = r"^([A-Za-z_][A-Za-z0-9_]*)\." r"([A-Za-z_][A-Za-z0-9_]*)\." r"(\*|(?:[A-Za-z_][A-Za-z0-9_]*))$"
 FIELD_SPEC_RE = re.compile(FIELD_SPEC_REGEX)
@@ -289,7 +290,7 @@ def create_view(connection, view_name, view_query: ViewSQL, update=True, force=F
                         "CREATE OR REPLACE TEMPORARY VIEW check_conflict AS {0};".format(view_query.query),
                         view_query.params,
                     )
-            except psycopg2.ProgrammingError:
+            except ProgrammingError:
                 force_required = True
             finally:
                 cursor.execute("DROP VIEW IF EXISTS check_conflict;")
