@@ -1,6 +1,8 @@
 from datetime import timedelta
 
-from django.db import models
+from django.db import models, connections
+from django.db.models import signals
+from django.dispatch import receiver
 from django.utils import timezone
 
 from django_pgviews import view
@@ -92,3 +94,10 @@ class MaterializedRelatedViewWithNoData(view.ReadOnlyMaterializedView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
     model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
     with_data = False
+
+
+@receiver(signals.post_migrate)
+def create_test_schema(sender, app_config, using, **kwargs):
+    command = "CREATE SCHEMA IF NOT EXISTS {};".format("test_schema")
+    with connections[using].cursor() as cursor:
+        cursor.execute(command)
