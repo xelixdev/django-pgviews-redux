@@ -14,7 +14,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from django_pgviews.signals import all_views_synced, view_synced
-from django_pgviews.view import _schema_and_name
+from django_pgviews.view import _make_where, _schema_and_name
 
 from . import models
 from .models import LatestSuperusers
@@ -27,8 +27,8 @@ except ImportError:
 
 def get_list_of_indexes(cursor, cls):
     schema, table = _schema_and_name(cursor.connection, cls._meta.db_table)
-
-    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s AND schemaname = %s", [table, schema])
+    where_fragment, params = _make_where(tablename=table, schemaname=schema)
+    cursor.execute(f"SELECT indexname FROM pg_indexes WHERE {where_fragment}", params)
     return {x[0] for x in cursor.fetchall()}
 
 
@@ -150,7 +150,6 @@ class ViewTestCase(TestCase):
     def test_materialized_view_indexes(self):
         with connection.cursor() as cursor:
             orig_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
-
             self.assertIn("viewtest_materializedrelatedviewwithindex_id_index", orig_indexes)
             self.assertEqual(len(orig_indexes), 2)
 
@@ -417,3 +416,25 @@ class DependantViewTestCase(TestCase):
 
             with self.assertRaises(DatabaseError):
                 cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")
+
+
+class MakeWhereTestCase(TestCase):
+    def test_with_schema(self):
+        where_fragment, params = _make_where(schemaname="test_schema", tablename="test_tablename")
+        self.assertEqual(where_fragment, "schemaname = %s AND tablename = %s")
+        self.assertEqual(params, ["test_schema", "test_tablename"])
+
+    def test_no_schema(self):
+        where_fragment, params = _make_where(schemaname=None, tablename="test_tablename")
+        self.assertEqual(where_fragment, "tablename = %s")
+        self.assertEqual(params, ["test_tablename"])
+
+    def test_with_schema_list(self):
+        where_fragment, params = _make_where(schemaname="test_schema", tablename=["test_tablename1", "test_tablename2"])
+        self.assertEqual(where_fragment, "schemaname = %s AND tablename IN (%s, %s)")
+        self.assertEqual(params, ["test_schema", "test_tablename1", "test_tablename2"])
+
+    def test_no_schema_list(self):
+        where_fragment, params = _make_where(schemaname=None, tablename=["test_tablename1", "test_tablename2"])
+        self.assertEqual(where_fragment, "tablename IN (%s, %s)")
+        self.assertEqual(params, ["test_tablename1", "test_tablename2"])
