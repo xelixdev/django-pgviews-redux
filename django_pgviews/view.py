@@ -71,7 +71,7 @@ def _schema_and_name(connection, view_name):
         try:
             schema_name = connection.schema_name
         except AttributeError:
-            schema_name = "public"
+            schema_name = None
 
         return schema_name, view_name
 
@@ -119,6 +119,26 @@ class CustomSchemaEditor(DatabaseSchemaEditor):
         return statement
 
 
+def _make_where(**kwargs):
+    where_fragments = []
+    params = []
+
+    for key, value in kwargs.items():
+        if value is None:
+            # skip key if value is not specified
+            continue
+
+        if isinstance(value, (list, tuple)):
+            in_fragment = ", ".join("%s" for _ in range(len(value)))
+            where_fragments.append(f"{key} IN ({in_fragment})")
+            params.extend(list(value))
+        else:
+            where_fragments.append(f"{key} = %s")
+            params.append(value)
+    where_fragment = " AND ".join(where_fragments)
+    return where_fragment, params
+
+
 def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
     """
     This function gets called when a materialized view is deemed not needing a re-create. That is however only a part
@@ -131,7 +151,8 @@ def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
     indexes = view_cls._meta.indexes
     vschema, vname = _schema_and_name(connection, view_name)
 
-    cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = %s AND schemaname = %s", [vname, vschema])
+    where_fragment, params = _make_where(schemaname=vschema, tablename=vname)
+    cursor.execute(f"SELECT indexname FROM pg_indexes WHERE {where_fragment}", params)
 
     existing_indexes = {x[0] for x in cursor.fetchall()}
     required_indexes = {x.name for x in indexes}
@@ -143,7 +164,11 @@ def _ensure_indexes(connection, cursor, view_cls, schema_name_log):
         concurrent_index_name = None
 
     for index_name in existing_indexes - required_indexes:
-        cursor.execute(f"DROP INDEX {vschema}.{index_name}")
+        if vschema:
+            full_index_name = f"{vschema}.{index_name}"
+        else:
+            full_index_name = index_name
+        cursor.execute(f"DROP INDEX {full_index_name}")
         logger.info("pgview dropped index %s on view %s (%s)", index_name, view_name, schema_name_log)
 
     schema_editor: DatabaseSchemaEditor = CustomSchemaEditor(connection)
@@ -188,10 +213,12 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
     cursor_wrapper = connection.cursor()
     cursor = cursor_wrapper.cursor
 
+    where_fragment, params = _make_where(schemaname=vschema, matviewname=vname)
+
     try:
         cursor.execute(
-            "SELECT COUNT(*) FROM pg_matviews WHERE schemaname = %s and matviewname = %s;",
-            [vschema, vname],
+            f"SELECT COUNT(*) FROM pg_matviews WHERE {where_fragment};",
+            params,
         )
         view_exists = cursor.fetchone()[0] > 0
 
@@ -206,9 +233,10 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
             _drop_mat_view(cursor, temp_viewname)
             _create_mat_view(cursor, temp_viewname, query, view_query.params, with_data=False)
 
+            definitions_where, definitions_params = _make_where(schemaname=vschema, matviewname=[vname, temp_vname])
             cursor.execute(
-                "SELECT definition FROM pg_matviews WHERE schemaname = %s and matviewname IN (%s, %s);",
-                [vschema, vname, temp_vname],
+                f"SELECT definition FROM pg_matviews WHERE {definitions_where};",
+                definitions_params,
             )
             definitions = cursor.fetchall()
 
@@ -265,9 +293,10 @@ def create_view(connection, view_name, view_query: ViewSQL, update=True, force=F
     try:
         force_required = False
         # Determine if view already exists.
+        view_exists_where, view_exists_params = _make_where(table_schema=vschema, table_name=vname)
         cursor.execute(
-            "SELECT COUNT(*) FROM information_schema.views WHERE table_schema = %s and table_name = %s;",
-            [vschema, vname],
+            f"SELECT COUNT(*) FROM information_schema.views WHERE {view_exists_where};",
+            view_exists_params,
         )
         view_exists = cursor.fetchone()[0] > 0
         if view_exists and not update:
