@@ -11,6 +11,7 @@ from django.core import exceptions
 from django.db import connections, router, transaction
 from django.db import models
 from django.db.backends.postgresql.schema import DatabaseSchemaEditor
+from django.db.backends.utils import truncate_name
 from django.db.models.query import QuerySet
 
 from django_pgviews.compat import ProgrammingError
@@ -208,7 +209,7 @@ def create_materialized_view(connection, view_cls, check_sql_changed=False):
             query = query[:-1]
 
         if check_sql_changed and view_exists:
-            temp_viewname = view_name + "_temp"
+            temp_viewname = truncate_name(view_name + "_temp", length=63)
             _, temp_vname = _schema_and_name(connection, temp_viewname)
 
             _drop_mat_view(cursor, temp_viewname)

@@ -49,7 +49,7 @@ class ViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_matviews WHERE matviewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 5)
 
             cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
@@ -236,7 +236,7 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 12)
+        self.assertEqual(len(synced_views), 13)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
 

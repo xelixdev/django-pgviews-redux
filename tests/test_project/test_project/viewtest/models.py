@@ -96,6 +96,11 @@ class MaterializedRelatedViewWithNoData(view.ReadOnlyMaterializedView):
     with_data = False
 
 
+class MaterializedRelatedViewWithReallyReallyReallyReallyReallyReallyLongName(view.ReadOnlyMaterializedView):
+    sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
+    model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
+
+
 @receiver(signals.post_migrate)
 def create_test_schema(sender, app_config, using, **kwargs):
     command = "CREATE SCHEMA IF NOT EXISTS {};".format("test_schema")
