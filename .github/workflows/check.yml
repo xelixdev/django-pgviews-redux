@@ -15,11 +15,11 @@ jobs:
       fail-fast: false
       matrix:
         py:
+          # - "3.12" - not supported on GitHub yet
           - "3.11"
           - "3.10"
           - "3.9"
           - "3.8"
-          - "3.7"
         postgres-version:
           # - 11-bullseye - Postgres 11 is still supported, but Django 4.2 doesn't support it anymore, to keep simpler stop testing here
           - 12
