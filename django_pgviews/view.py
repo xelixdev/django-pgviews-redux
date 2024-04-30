@@ -1,5 +1,5 @@
-"""Helpers to access Postgres views from the Django ORM.
-"""
+"""Helpers to access Postgres views from the Django ORM."""
+
 import collections
 import copy
 import logging

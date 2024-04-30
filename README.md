@@ -1,7 +1,5 @@
 # SQL Views for Postgres
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
 Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM.
 Fork of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for Django 3.2+.
 
