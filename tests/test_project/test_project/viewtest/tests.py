@@ -1,5 +1,5 @@
-"""Test Django PGViews.
-"""
+"""Test Django PGViews."""
+
 from contextlib import closing
 from datetime import timedelta
 
