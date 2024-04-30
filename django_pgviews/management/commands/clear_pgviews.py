@@ -4,7 +4,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
-from django_pgviews.view import clear_view, View, MaterializedView
+from django_pgviews.view import MaterializedView, View, clear_view
 
 logger = logging.getLogger("django_pgviews.sync_pgviews")
 
@@ -23,7 +23,7 @@ class Command(BaseCommand):
         for view_cls in apps.get_models():
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
                 continue
-            python_name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
+            python_name = f"{view_cls._meta.app_label}.{view_cls.__name__}"
             connection = view_cls.get_view_connection(using=database, restricted_mode=True)
             if not connection:
                 continue

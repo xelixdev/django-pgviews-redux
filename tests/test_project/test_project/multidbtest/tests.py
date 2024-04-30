@@ -1,16 +1,15 @@
 import datetime as dt
 
 from django.core.management import call_command
+from django.db import DEFAULT_DB_ALIAS, connections
 from django.dispatch import receiver
-from django.db import connections, DEFAULT_DB_ALIAS
 from django.test import TestCase, override_settings
 
 from django_pgviews.signals import view_synced
 
-from .models import Observation, MonthlyObservation
-from .routers import WeatherPinnedRouter
-
 from ..viewtest.models import RelatedView
+from .models import MonthlyObservation, Observation
+from .routers import WeatherPinnedRouter
 
 
 @override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
@@ -18,26 +17,26 @@ class WeatherPinnedViewConnectionTest(TestCase):
     """Weather views should only return weather_db when pinned."""
 
     def test_weather_view_using_weather_db(self):
-        self.assertEqual(MonthlyObservation.get_view_connection(using="weather_db"), connections["weather_db"])
+        assert MonthlyObservation.get_view_connection(using="weather_db") == connections["weather_db"]
 
     def test_weather_view_using_default_db(self):
-        self.assertIsNone(MonthlyObservation.get_view_connection(using=DEFAULT_DB_ALIAS))
+        assert MonthlyObservation.get_view_connection(using=DEFAULT_DB_ALIAS) is None
 
     def test_other_app_view_using_weather_db(self):
-        self.assertIsNone(RelatedView.get_view_connection(using="weather_db"))
+        assert RelatedView.get_view_connection(using="weather_db") is None
 
     def test_other_app_view_using_default_db(self):
-        self.assertEqual(RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
+        assert RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS) == connections["default"]
 
 
 class DefaultRouterViewConnectionTest(TestCase):
     """All views should should use default alias by default."""
 
     def test_weather_view_default(self):
-        self.assertEqual(MonthlyObservation.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
+        assert MonthlyObservation.get_view_connection(using=DEFAULT_DB_ALIAS) == connections["default"]
 
     def test_other_app_view_default(self):
-        self.assertEqual(RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
+        assert RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS) == connections["default"]
 
 
 @override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
@@ -49,13 +48,13 @@ class WeatherPinnedRefreshViewTest(TestCase):
     def test_pre_refresh(self):
         Observation.objects.create(date=dt.date(2022, 1, 1), temperature=10)
         Observation.objects.create(date=dt.date(2022, 1, 3), temperature=20)
-        self.assertEqual(MonthlyObservation.objects.count(), 0)
+        assert MonthlyObservation.objects.count() == 0
 
     def test_refresh(self):
         Observation.objects.create(date=dt.date(2022, 1, 1), temperature=10)
         Observation.objects.create(date=dt.date(2022, 1, 3), temperature=20)
         MonthlyObservation.refresh()
-        self.assertEqual(MonthlyObservation.objects.count(), 1)
+        assert MonthlyObservation.objects.count() == 1
 
 
 @override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
@@ -72,8 +71,8 @@ class WeatherPinnedMigrateTest(TestCase):
             synced_views.append(sender)
 
         call_command("migrate", database=DEFAULT_DB_ALIAS)
-        self.assertNotIn(MonthlyObservation, synced_views)
-        self.assertIn(RelatedView, synced_views)
+        assert MonthlyObservation not in synced_views
+        assert RelatedView in synced_views
 
     def test_weather_db(self):
         synced_views = []
@@ -83,8 +82,8 @@ class WeatherPinnedMigrateTest(TestCase):
             synced_views.append(sender)
 
         call_command("migrate", database="weather_db")
-        self.assertIn(MonthlyObservation, synced_views)
-        self.assertNotIn(RelatedView, synced_views)
+        assert MonthlyObservation in synced_views
+        assert RelatedView not in synced_views
 
 
 @override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
@@ -101,8 +100,8 @@ class WeatherPinnedSyncPGViewsTest(TestCase):
             synced_views.append(sender)
 
         call_command("sync_pgviews", database=DEFAULT_DB_ALIAS)
-        self.assertNotIn(MonthlyObservation, synced_views)
-        self.assertIn(RelatedView, synced_views)
+        assert MonthlyObservation not in synced_views
+        assert RelatedView in synced_views
 
     def test_weather_db(self):
         synced_views = []
@@ -112,8 +111,8 @@ class WeatherPinnedSyncPGViewsTest(TestCase):
             synced_views.append(sender)
 
         call_command("sync_pgviews", database="weather_db")
-        self.assertIn(MonthlyObservation, synced_views)
-        self.assertNotIn(RelatedView, synced_views)
+        assert MonthlyObservation in synced_views
+        assert RelatedView not in synced_views
 
 
 @override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
@@ -125,9 +124,9 @@ class WeatherPinnedRefreshPGViewsTest(TestCase):
     def test_default(self):
         Observation.objects.create(date=dt.date(2022, 1, 1), temperature=10)
         call_command("refresh_pgviews", database=DEFAULT_DB_ALIAS)
-        self.assertEqual(MonthlyObservation.objects.count(), 0)
+        assert MonthlyObservation.objects.count() == 0
 
     def test_weather_db(self):
         Observation.objects.create(date=dt.date(2022, 1, 1), temperature=10)
         call_command("refresh_pgviews", database="weather_db")
-        self.assertEqual(MonthlyObservation.objects.count(), 1)
+        assert MonthlyObservation.objects.count() == 1

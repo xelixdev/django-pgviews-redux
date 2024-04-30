@@ -2,14 +2,14 @@ import logging
 
 from django.apps import apps
 
-from django_pgviews.signals import view_synced, all_views_synced
-from django_pgviews.view import create_view, View, MaterializedView, create_materialized_view
+from django_pgviews.signals import all_views_synced, view_synced
+from django_pgviews.view import MaterializedView, View, create_materialized_view, create_view
 
 logger = logging.getLogger("django_pgviews.sync_pgviews")
 exists_logger = logging.getLogger("django_pgviews.sync_pgviews.exists")
 
 
-class RunBacklog(object):
+class RunBacklog:
     def __init__(self) -> None:
         super().__init__()
         self.finished = []
@@ -57,7 +57,7 @@ class ViewSyncer(RunBacklog):
         new_backlog = []
         for view_cls in backlog:
             skip = False
-            name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
+            name = f"{view_cls._meta.app_label}.{view_cls.__name__}"
             for dep in view_cls._dependencies:
                 if dep not in self.finished:
                     skip = True
@@ -128,7 +128,7 @@ class ViewRefresher(RunBacklog):
         new_backlog = []
         for view_cls in backlog:
             skip = False
-            name = "{}.{}".format(view_cls._meta.app_label, view_cls.__name__)
+            name = f"{view_cls._meta.app_label}.{view_cls.__name__}"
             for dep in view_cls._dependencies:
                 if dep not in self.finished:
                     skip = True

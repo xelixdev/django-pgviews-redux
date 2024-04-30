@@ -1,12 +1,9 @@
-from __future__ import absolute_import, print_function, unicode_literals
+from pathlib import Path
 
-from os.path import isfile
+from setuptools import find_packages, setup
 
-from setuptools import setup, find_packages
-
-
-if isfile("README.md"):
-    LONG_DESCRIPTION = open("README.md").read()
+if Path("README.md").exists():
+    LONG_DESCRIPTION = Path("README.md").read_text()
 else:
     LONG_DESCRIPTION = ""
 
