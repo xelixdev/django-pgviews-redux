@@ -45,33 +45,36 @@ class ViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            assert count == 5
+            self.assertEqual(count, 5)
 
             cur.execute("""SELECT COUNT(*) FROM pg_matviews WHERE matviewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            assert count == 5
+            self.assertEqual(count, 5)
 
             cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
             (count,) = cur.fetchone()
-            assert count == 1
+            self.assertEqual(count, 1)
 
     def test_clear_views(self):
         """
         Check the PG View table to see that the views were removed.
         """
-        call_command("clear_pgviews", *[])
+        call_command(
+            "clear_pgviews",
+            *[],
+        )
         with closing(connection.cursor()) as cur:
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            assert count == 0
+            self.assertEqual(count, 0)
 
             cur.execute("""SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'test_schema';""")
 
             (count,) = cur.fetchone()
-            assert count == 0
+            self.assertEqual(count, 0)
 
     def test_wildcard_projection(self):
         """
@@ -83,8 +86,8 @@ class ViewTestCase(TestCase):
 
         foo_superuser = models.Superusers.objects.get(username="foo")
 
-        assert foo_user.id == foo_superuser.id
-        assert foo_user.password == foo_superuser.password
+        self.assertEqual(foo_user.id, foo_superuser.id)
+        self.assertEqual(foo_user.password, foo_superuser.password)
 
     def test_limited_projection(self):
         """
@@ -96,9 +99,9 @@ class ViewTestCase(TestCase):
 
         foo_simple = models.SimpleUser.objects.get(username="foo")
 
-        assert foo_simple.username == foo_user.username
-        assert foo_simple.password == foo_user.password
-        assert not getattr(foo_simple, "date_joined", False)
+        self.assertEqual(foo_simple.username, foo_user.username)
+        self.assertEqual(foo_simple.password, foo_user.password)
+        self.assertFalse(getattr(foo_simple, "date_joined", False))
 
     def test_related_delete(self):
         """
@@ -113,23 +116,29 @@ class ViewTestCase(TestCase):
         """
         Test a materialized view works correctly
         """
-        assert models.MaterializedRelatedView.objects.count() == 0, "Materialized view should not have anything"
+        self.assertEqual(
+            models.MaterializedRelatedView.objects.count(), 0, "Materialized view should not have anything"
+        )
 
         test_model = models.TestModel()
         test_model.name = "Bob"
         test_model.save()
 
-        assert models.MaterializedRelatedView.objects.count() == 0, "Materialized view should not have anything"
+        self.assertEqual(
+            models.MaterializedRelatedView.objects.count(), 0, "Materialized view should not have anything"
+        )
 
         models.MaterializedRelatedView.refresh()
 
-        assert models.MaterializedRelatedView.objects.count() == 1, "Materialized view should have updated"
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1, "Materialized view should have updated")
 
         models.MaterializedRelatedViewWithIndex.refresh(concurrently=True)
 
-        assert (
-            models.MaterializedRelatedViewWithIndex.objects.count() == 1
-        ), "Materialized view should have updated concurrently"
+        self.assertEqual(
+            models.MaterializedRelatedViewWithIndex.objects.count(),
+            1,
+            "Materialized view should have updated concurrently",
+        )
 
     def test_refresh_missing(self):
         with connection.cursor() as cursor:
@@ -142,8 +151,8 @@ class ViewTestCase(TestCase):
         with connection.cursor() as cursor:
             orig_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
 
-            assert "viewtest_materializedrelatedviewwithindex_id_index" in orig_indexes
-            assert len(orig_indexes) == 2
+            self.assertIn("viewtest_materializedrelatedviewwithindex_id_index", orig_indexes)
+            self.assertEqual(len(orig_indexes), 2)
 
             # drop current indexes, add some random ones which will get deleted
             for index_name in orig_indexes:
@@ -163,14 +172,14 @@ class ViewTestCase(TestCase):
         with connection.cursor() as cursor:
             new_indexes = get_list_of_indexes(cursor, models.MaterializedRelatedViewWithIndex)
 
-            assert new_indexes == orig_indexes
+            self.assertEqual(new_indexes, orig_indexes)
 
     def test_materialized_view_schema_indexes(self):
         with connection.cursor() as cursor:
             orig_indexes = get_list_of_indexes(cursor, models.CustomSchemaMaterializedRelatedViewWithIndex)
 
-            assert len(orig_indexes) == 2
-            assert "test_schema_my_custom_view_with_index_id_index" in orig_indexes
+            self.assertEqual(len(orig_indexes), 2)
+            self.assertIn("test_schema_my_custom_view_with_index_id_index", orig_indexes)
 
             # drop current indexes, add some random ones which will get deleted
             for index_name in orig_indexes:
@@ -189,7 +198,7 @@ class ViewTestCase(TestCase):
         with connection.cursor() as cursor:
             new_indexes = get_list_of_indexes(cursor, models.CustomSchemaMaterializedRelatedViewWithIndex)
 
-            assert new_indexes == orig_indexes
+            self.assertEqual(new_indexes, orig_indexes)
 
     def test_materialized_view_with_no_data(self):
         """
@@ -203,7 +212,9 @@ class ViewTestCase(TestCase):
 
         models.MaterializedRelatedViewWithNoData.refresh()
 
-        assert models.MaterializedRelatedViewWithNoData.objects.count() == 1, "Materialized view should have updated"
+        self.assertEqual(
+            models.MaterializedRelatedViewWithNoData.objects.count(), 1, "Materialized view should have updated"
+        )
 
     def test_signals(self):
         expected = {
@@ -218,9 +229,8 @@ class ViewTestCase(TestCase):
             synced_views.append(sender)
             if sender in expected:
                 expected_kwargs = expected.pop(sender)
-                assert (
-                    dict(expected_kwargs, update=False, force=False, signal=view_synced, using=DEFAULT_DB_ALIAS)
-                    == kwargs
+                self.assertEqual(
+                    dict(expected_kwargs, update=False, force=False, signal=view_synced, using=DEFAULT_DB_ALIAS), kwargs
                 )
 
         @receiver(all_views_synced)
@@ -230,9 +240,9 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        assert len(synced_views) == 13
-        assert all_views_were_synced[0] is True
-        assert not expected
+        self.assertEqual(len(synced_views), 13)
+        self.assertEqual(all_views_were_synced[0], True)
+        self.assertFalse(expected)
 
     def test_get_sql(self):
         User.objects.create(username="old", is_superuser=True, date_joined=timezone.now() - timedelta(days=10))
@@ -240,22 +250,22 @@ class ViewTestCase(TestCase):
 
         call_command("sync_pgviews", update=False)
 
-        assert LatestSuperusers.objects.count() == 1
+        self.assertEqual(LatestSuperusers.objects.count(), 1)
 
     def test_sync_pgviews_materialized_views_check_sql_changed(self):
-        assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
-        assert models.MaterializedRelatedView.objects.count() == 0, "Test started with non-empty mat view"
+        self.assertEqual(models.TestModel.objects.count(), 0, "Test started with non-empty TestModel")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0, "Test started with non-empty mat view")
 
         models.TestModel.objects.create(name="Test")
 
         # test regular behaviour, the mat view got recreated
         call_command("sync_pgviews", update=False)  # uses default django setting, False
-        assert models.MaterializedRelatedView.objects.count() == 1
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
 
         # the mat view did not get recreated because the model hasn't changed
         models.TestModel.objects.create(name="Test 2")
         call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
-        assert models.MaterializedRelatedView.objects.count() == 1
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
 
         # the mat view got recreated because the mat view SQL has changed
 
@@ -270,38 +280,38 @@ class ViewTestCase(TestCase):
             )
 
         call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
-        assert models.MaterializedRelatedView.objects.count() == 2
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 2)
 
     def test_migrate_materialized_views_check_sql_changed_default(self):
-        assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
-        assert models.MaterializedRelatedView.objects.count() == 0, "Test started with non-empty mat view"
+        self.assertEqual(models.TestModel.objects.count(), 0, "Test started with non-empty TestModel")
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0, "Test started with non-empty mat view")
 
         models.TestModel.objects.create(name="Test")
 
         call_command("migrate")
 
-        assert models.MaterializedRelatedView.objects.count() == 1
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
 
     def test_refresh_pgviews(self):
         models.TestModel.objects.create(name="Test")
 
         call_command("refresh_pgviews")
 
-        assert models.MaterializedRelatedView.objects.count() == 1
-        assert models.DependantView.objects.count() == 1
-        assert models.DependantMaterializedView.objects.count() == 1
-        assert models.MaterializedRelatedViewWithIndex.objects.count() == 1
-        assert models.MaterializedRelatedViewWithNoData.objects.count() == 1
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
+        self.assertEqual(models.DependantView.objects.count(), 1)
+        self.assertEqual(models.DependantMaterializedView.objects.count(), 1)
+        self.assertEqual(models.MaterializedRelatedViewWithIndex.objects.count(), 1)
+        self.assertEqual(models.MaterializedRelatedViewWithNoData.objects.count(), 1)
 
         models.TestModel.objects.create(name="Test 2")
 
         call_command("refresh_pgviews", concurrently=True)
 
-        assert models.MaterializedRelatedView.objects.count() == 2
-        assert models.DependantView.objects.count() == 2
-        assert models.DependantMaterializedView.objects.count() == 2
-        assert models.MaterializedRelatedViewWithIndex.objects.count() == 2
-        assert models.MaterializedRelatedViewWithNoData.objects.count() == 2
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 2)
+        self.assertEqual(models.DependantView.objects.count(), 2)
+        self.assertEqual(models.DependantMaterializedView.objects.count(), 2)
+        self.assertEqual(models.MaterializedRelatedViewWithIndex.objects.count(), 2)
+        self.assertEqual(models.MaterializedRelatedViewWithNoData.objects.count(), 2)
 
 
 class TestMaterializedViewsCheckSQLSettings(TestCase):
@@ -309,12 +319,12 @@ class TestMaterializedViewsCheckSQLSettings(TestCase):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
 
     def test_migrate_materialized_views_check_sql_set_to_true(self):
-        assert models.TestModel.objects.count() == 0
-        assert models.MaterializedRelatedView.objects.count() == 0
+        self.assertEqual(models.TestModel.objects.count(), 0)
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0)
 
         models.TestModel.objects.create(name="Test")
         call_command("migrate")
-        assert models.MaterializedRelatedView.objects.count() == 0
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 0)
 
         # let's pretend the mat view in the DB is ordered by name, while the defined on models isn't
         with connection.cursor() as cursor:
@@ -328,7 +338,7 @@ class TestMaterializedViewsCheckSQLSettings(TestCase):
 
         # which means that when the sync is triggered here, the mat view will get updated
         call_command("migrate")
-        assert models.MaterializedRelatedView.objects.count() == 1
+        self.assertEqual(models.MaterializedRelatedView.objects.count(), 1)
 
     def tearDown(self):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
@@ -361,7 +371,7 @@ class DependantViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            assert count == 5
+            self.assertEqual(count, 5)
 
             with self.assertRaises(DatabaseError):
                 cur.execute("""SELECT name from viewtest_relatedview;""")
@@ -397,7 +407,7 @@ class DependantViewTestCase(TestCase):
             cur.execute("""SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'viewtest_%';""")
 
             (count,) = cur.fetchone()
-            assert count == 5
+            self.assertEqual(count, 5)
 
             with self.assertRaises(DatabaseError):
                 cur.execute("""SELECT name from viewtest_dependantmaterializedview;""")
