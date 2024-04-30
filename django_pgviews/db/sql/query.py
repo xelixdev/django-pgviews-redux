@@ -18,7 +18,7 @@ class NonQuotingQuery(query.Query):
         if using:
             connection = connections[using]
 
-        for alias, annotation in self.annotation_select.items():
+        for _alias, annotation in self.annotation_select.items():
             connection.ops.check_expression_support(annotation)
 
         return compiler.NonQuotingCompiler(self, connection, using)

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db import models, connections
+from django.db import connections, models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils import timezone

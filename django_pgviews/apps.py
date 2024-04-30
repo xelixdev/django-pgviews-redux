@@ -27,8 +27,9 @@ class ViewConfig(apps.AppConfig):
             logger.info("All applications have migrated, time to sync")
             # Import here otherwise Django doesn't start properly
             # (models in app init are not allowed)
-            from .models import ViewSyncer
             from django.conf import settings
+
+            from .models import ViewSyncer
 
             vs = ViewSyncer()
             vs.run(

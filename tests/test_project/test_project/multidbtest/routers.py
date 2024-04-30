@@ -26,6 +26,7 @@ class WeatherPinnedRouter:
         """
         if obj1._meta.app_label == "multidbtest" or obj2._meta.app_label == "multidbtest":
             return True
+        return None
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         """
