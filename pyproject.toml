@@ -1,7 +1,39 @@
+[tool.poetry]
+name = "django-pgviews-redux"
+version = "0.9.5"
+description = "Create and manage Postgres SQL Views in Django"
+authors = ["Mikuláš Poul <mikulas.poul@xelix.com>"]
+readme = "README.md"
+packages = [{include = "django_pgviews"}]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "License :: Public Domain",
+    "License :: OSI Approved :: The Unlicense (Unlicense)",
+]
+include = ["UNLICENSE"]
+repository = "https://github.com/xelixdev/django-pgviews-redux"
+keywords = ["django", "views", "materialized views", "postgres"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+python = ">=3.6"
+
 [tool.ruff]
 line-length = 120
 target-version = "py38"
-
 
 [tool.ruff.lint]
 select = [
