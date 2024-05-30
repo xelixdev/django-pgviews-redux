@@ -10,6 +10,8 @@ class WeatherPinnedRouter:
         """
         if model._meta.app_label == "multidbtest":
             return "weather_db"
+        if model._meta.app_label == "schemadbtest":
+            return "schema_db"
         return "default"
 
     def db_for_write(self, model, **hints):
@@ -18,13 +20,18 @@ class WeatherPinnedRouter:
         """
         if model._meta.app_label == "multidbtest":
             return "weather_db"
+        if model._meta.app_label == "schemadbtest":
+            return "schema_db"
         return "default"
 
     def allow_relation(self, obj1, obj2, **hints):
         """
         Allow relations if a model in the multidbtest app is involved.
         """
-        if obj1._meta.app_label == "multidbtest" or obj2._meta.app_label == "multidbtest":
+        if obj1._meta.app_label in {"multidbtest", "schemadbtest"} or obj2._meta.app_label in {
+            "multidbtest",
+            "schemadbtest",
+        }:
             return True
         return None
 
@@ -34,5 +41,7 @@ class WeatherPinnedRouter:
         """
         if app_label == "multidbtest":
             return db == "weather_db"
+        elif app_label == "schemadbtest":
+            return db == "schema_db"
         else:
             return db == "default"

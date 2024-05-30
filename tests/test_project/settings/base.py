@@ -13,22 +13,29 @@ MANAGERS = ADMINS
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",  # Add 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        "NAME": "django_pgviews",  # Or path to database file if using sqlite3.
-        # The following settings are not used with sqlite3:
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "django_pgviews",
         "USER": "postgres",
         "PASSWORD": "postgres",
-        "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-        "PORT": "",  # Set to empty string for default.
+        "HOST": "",
+        "PORT": "",
     },
     "weather_db": {
-        "ENGINE": "django.db.backends.postgresql",  # Add 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        "NAME": "postgres_weatherdb",  # Or path to database file if using sqlite3.
-        # The following settings are not used with sqlite3:
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "postgres_weatherdb",
         "USER": "django_pgviews",
         "PASSWORD": "postgres",
-        "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-        "PORT": "",  # Set to empty string for default.
+        "HOST": "",
+        "PORT": "",
+    },
+    "schema_db": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "postgres_schemadb",
+        "OPTIONS": {"options": "-c search_path=other"},
+        "USER": "django_pgviews",
+        "PASSWORD": "postgres",
+        "HOST": "",
+        "PORT": "",
     },
 }
 
@@ -141,6 +148,7 @@ INSTALLED_APPS = (
     "django_pgviews",
     "test_project.viewtest",
     "test_project.multidbtest",
+    "test_project.schemadbtest",
 )
 
 # A sample logging configuration. The only tangible logging
