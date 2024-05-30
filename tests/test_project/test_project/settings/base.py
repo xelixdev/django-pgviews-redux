@@ -16,17 +16,17 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",  # Add 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
         "NAME": "django_pgviews",  # Or path to database file if using sqlite3.
         # The following settings are not used with sqlite3:
-        "USER": "django_pgviews",
-        "PASSWORD": "password",
+        "USER": "postgres",
+        "PASSWORD": "postgres",
         "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         "PORT": "",  # Set to empty string for default.
     },
     "weather_db": {
         "ENGINE": "django.db.backends.postgresql",  # Add 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        "NAME": "django_pgviews_weatherdb",  # Or path to database file if using sqlite3.
+        "NAME": "postgres_weatherdb",  # Or path to database file if using sqlite3.
         # The following settings are not used with sqlite3:
         "USER": "django_pgviews",
-        "PASSWORD": "password",
+        "PASSWORD": "postgres",
         "HOST": "",  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         "PORT": "",  # Set to empty string for default.
     },
