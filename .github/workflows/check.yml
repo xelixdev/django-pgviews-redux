@@ -34,7 +34,7 @@ jobs:
       - name: Create database
         run: |
           # maps the container port to localhost
-          docker run --name db -p 5432:5432 -d -e POSTGRES_PASSWORD=testing postgres:${{ matrix.postgres-version }}
+          docker run --name db -p 5432:5432 -d -e POSTGRES_PASSWORD=postgres postgres:${{ matrix.postgres-version }}
           sleep 10 # wait for server to initialize
 
       - name: Install tox-gh
