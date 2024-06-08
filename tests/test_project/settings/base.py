@@ -38,6 +38,7 @@ DATABASES = {
         "PORT": "",
     },
 }
+DATABASE_ROUTERS = ["test_project.routers.DBRouter"]
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

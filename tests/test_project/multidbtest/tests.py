@@ -3,16 +3,14 @@ import datetime as dt
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS, connections
 from django.dispatch import receiver
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from django_pgviews.signals import view_synced
 
 from ..viewtest.models import RelatedView
 from .models import MonthlyObservation, Observation
-from .routers import WeatherPinnedRouter
 
 
-@override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
 class WeatherPinnedViewConnectionTest(TestCase):
     """Weather views should only return weather_db when pinned."""
 
@@ -29,17 +27,6 @@ class WeatherPinnedViewConnectionTest(TestCase):
         self.assertEqual(RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
 
 
-class DefaultRouterViewConnectionTest(TestCase):
-    """All views should should use default alias by default."""
-
-    def test_weather_view_default(self):
-        self.assertEqual(MonthlyObservation.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
-
-    def test_other_app_view_default(self):
-        self.assertEqual(RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS), connections["default"])
-
-
-@override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
 class WeatherPinnedRefreshViewTest(TestCase):
     """View.refresh() should automatically select the appropriate database."""
 
@@ -57,7 +44,6 @@ class WeatherPinnedRefreshViewTest(TestCase):
         self.assertEqual(MonthlyObservation.objects.count(), 1)
 
 
-@override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
 class WeatherPinnedMigrateTest(TestCase):
     """Ensure views are only sync'd against the correct database on migrate."""
 
@@ -86,7 +72,6 @@ class WeatherPinnedMigrateTest(TestCase):
         self.assertNotIn(RelatedView, synced_views)
 
 
-@override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
 class WeatherPinnedSyncPGViewsTest(TestCase):
     """Ensure views are only sync'd against the correct database with sync_pgviews."""
 
@@ -115,7 +100,6 @@ class WeatherPinnedSyncPGViewsTest(TestCase):
         self.assertNotIn(RelatedView, synced_views)
 
 
-@override_settings(DATABASE_ROUTERS=[WeatherPinnedRouter()])
 class WeatherPinnedRefreshPGViewsTest(TestCase):
     """Ensure views are only refreshed on each database using refresh_pgviews"""
 

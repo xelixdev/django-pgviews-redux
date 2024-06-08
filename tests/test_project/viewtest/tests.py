@@ -240,9 +240,9 @@ class ViewTestCase(TestCase):
         call_command("sync_pgviews", update=False)
 
         # All views went through syncing
-        self.assertEqual(len(synced_views), 13)
         self.assertEqual(all_views_were_synced[0], True)
         self.assertFalse(expected)
+        self.assertEqual(len(synced_views), 12)
 
     def test_get_sql(self):
         User.objects.create(username="old", is_superuser=True, date_joined=timezone.now() - timedelta(days=10))
