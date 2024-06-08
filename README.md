@@ -314,10 +314,16 @@ check the indexes on the table and delete any extra indexes and create any missi
 is done through the index name, so if you use custom names for your indexes, it might happen that it won't get updated
 on change of the content but not the name.
 
-### Custom Schema
+### Schemas
 
-You can define any table name you wish for your views. They can even live inside your own custom
-[PostgreSQL schema](http://www.postgresql.org/docs/current/static/ddl-schemas.html).
+By default, the views will get created in the schema of the database, this is usually `public`. 
+The package supports the database defining the schema in the settings by using 
+options (`"OPTIONS": {"options": "-c search_path=custom_schema"}`).
+
+The package `django-tenants` is supported as well, if used.
+
+It is possible to define the schema explicitly for a view, if different from the default schema of the database, like
+this: 
 
 ```python
 from django_pgviews import view as pg
