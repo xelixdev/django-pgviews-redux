@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-pgviews-redux"
-version = "0.10.0"
+version = "0.10.1"
 description = "Create and manage Postgres SQL Views in Django"
 authors = ["Mikuláš Poul <mikulas.poul@xelix.com>"]
 readme = "README.md"

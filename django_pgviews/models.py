@@ -63,16 +63,17 @@ class ViewSyncer(RunBacklog):
                     skip = True
                     break
 
-            if skip is True:
-                new_backlog.append(view_cls)
-                logger.info("Putting pgview at back of queue: %s", name)
-                continue  # Skip
-
             try:
                 connection = view_cls.get_view_connection(using=using, restricted_mode=True)
                 if not connection:
                     logger.info("Skipping pgview %s (migrations not allowed on %s)", name, using)
                     continue  # Skip
+
+                if skip is True:
+                    new_backlog.append(view_cls)
+                    logger.info("Putting pgview at back of queue: %s", name)
+                    continue  # Skip
+
                 if isinstance(view_cls(), MaterializedView):
                     status = create_materialized_view(
                         connection, view_cls, check_sql_changed=materialized_views_check_sql_changed
