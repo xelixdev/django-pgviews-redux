@@ -21,10 +21,11 @@ jobs:
           - "3.9"
           - "3.8"
         postgres-version:
-          - 12
+#          - 12 - 5.1 doesn't support 12 anymore, let's just stop running tests for it
           - 13
           - 14
           - 15
+          - 16
     steps:
       - name: Setup python for test ${{ matrix.py }}
         uses: actions/setup-python@v5
