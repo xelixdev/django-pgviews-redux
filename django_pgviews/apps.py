@@ -46,9 +46,7 @@ class ViewConfig(apps.AppConfig):
         """
         from django.conf import settings
 
-        sync_enabled = getattr(
-            settings, "MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE", False
-        ) is False
+        sync_enabled = getattr(settings, "MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE", False) is False
 
         if sync_enabled:
             signals.post_migrate.connect(self.sync_pgviews)
