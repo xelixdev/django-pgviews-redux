@@ -137,6 +137,14 @@ This will take all fields on `myapp.Customer` and apply them to
 
 ## Features
 
+### Configuration
+`MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE`
+
+When set to True, it skips running `sync_pgview` during migrations, which can be useful if you want to control the synchronization manually or avoid potential overhead during migrations. (default: False)
+```
+MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE = True
+```
+
 ### Updating Views
 
 Sometimes your models change and you need your Database Views to reflect the new
@@ -215,9 +223,9 @@ def customer_saved(sender, action=None, instance=None, **kwargs):
 
 Postgres 9.4 and up allow materialized views to be refreshed concurrently, without blocking reads, as long as a
 unique index exists on the materialized view. To enable concurrent refresh, specify the name of a column that can be
-used as a unique index on the materialized view. Unique index can be defined on more than one column of a materialized 
-view. Once enabled, passing `concurrently=True` to the model's refresh method will result in postgres performing the 
-refresh concurrently. (Note that the refresh method itself blocks until the refresh is complete; concurrent refresh is 
+used as a unique index on the materialized view. Unique index can be defined on more than one column of a materialized
+view. Once enabled, passing `concurrently=True` to the model's refresh method will result in postgres performing the
+refresh concurrently. (Note that the refresh method itself blocks until the refresh is complete; concurrent refresh is
 most useful when materialized views are updated in another process or thread.)
 
 Example:
@@ -245,7 +253,7 @@ def customer_saved(sender, action=None, instance=None, **kwargs):
 
 #### Indexes
 
-As the materialized view isn't defined through the usual Django model fields, any indexes defined there won't be 
+As the materialized view isn't defined through the usual Django model fields, any indexes defined there won't be
 created on the materialized view. Luckily Django provides a Meta option called `indexes` which can be used to add custom
 indexes to models. `pg_views` supports defining indexes on materialized views using this option.
 
@@ -265,7 +273,7 @@ class PreferredCustomer(pg.MaterializedView):
 
     name = models.CharField(max_length=100)
     post_code = models.CharField(max_length=20, db_index=True)
-    
+
     class Meta:
         managed = False  # don't forget this, otherwise Django will think it's a regular model
         indexes = [
@@ -277,7 +285,7 @@ class PreferredCustomer(pg.MaterializedView):
 
 Materialized views can be created either with or without data. By default, they are created with data, however
 `pg_views` supports creating materialized views without data, by defining `with_data = False` for the
-`pg.MaterializedView` class. Such views then do not support querying until the first 
+`pg.MaterializedView` class. Such views then do not support querying until the first
 refresh (raising `django.db.utils.OperationalError`).
 
 Example:
@@ -304,7 +312,7 @@ checks existing materialized view definition in the database (if the mat. view e
 definition with the one currently defined in your `pg.MaterializedView` subclass. If the definition matches
 exactly, the re-create of materialized view is skipped.
 
-This feature is enabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in your Django settings to `True`, 
+This feature is enabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in your Django settings to `True`,
 which enables the feature when running `migrate`. The command `sync_pgviews` uses this setting as well,
 however it also has switches `--enable-materialized-views-check-sql-changed` and
 `--disable-materialized-views-check-sql-changed` which override this setting for that command.
@@ -316,14 +324,14 @@ on change of the content but not the name.
 
 ### Schemas
 
-By default, the views will get created in the schema of the database, this is usually `public`. 
-The package supports the database defining the schema in the settings by using 
+By default, the views will get created in the schema of the database, this is usually `public`.
+The package supports the database defining the schema in the settings by using
 options (`"OPTIONS": {"options": "-c search_path=custom_schema"}`).
 
 The package `django-tenants` is supported as well, if used.
 
 It is possible to define the schema explicitly for a view, if different from the default schema of the database, like
-this: 
+this:
 
 ```python
 from django_pgviews import view as pg
