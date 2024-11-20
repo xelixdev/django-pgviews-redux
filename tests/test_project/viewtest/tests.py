@@ -442,14 +442,17 @@ class MakeWhereTestCase(TestCase):
 
 
 class TestMaterializedViewSyncDisabledSettings(TestCase):
-
     def setUp(self):
         """
         NOTE: By default, Django runs and registers signals with default values during
-        test execution. To address this, we drop the view, reload the app configuration,
-        and then run migrations. This process ensures that the view is not created.
+        test execution. To address this, we store the original receivers and settings,
+        then restore them in tearDown to avoid affecting other tests.
         """
         from django.db.models.signals import post_migrate
+
+        # Store original receivers and settings
+        self._original_receivers = list(post_migrate.receivers)
+        self._original_config = apps.get_app_config("django_pgviews").counter
 
         # Clear existing signal receivers
         post_migrate.receivers.clear()
@@ -464,25 +467,33 @@ class TestMaterializedViewSyncDisabledSettings(TestCase):
 
         # Drop the view if it exists
         with connection.cursor() as cursor:
-            cursor.execute("DROP MATERIALIZED VIEW viewtest_materializedrelatedview CASCADE;")
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS viewtest_materializedrelatedview CASCADE;")
+
+    def tearDown(self):
+        """Restore original signal receivers and app config state"""
+        from django.db.models.signals import post_migrate
+
+        post_migrate.receivers.clear()
+        post_migrate.receivers.extend(self._original_receivers)
+        apps.get_app_config("django_pgviews").counter = self._original_config
 
     def test_migrate_materialized_views_sync_disabled(self):
         self.assertEqual(models.TestModel.objects.count(), 0)
 
         models.TestModel.objects.create(name="Test")
 
-        call_command("migrate") # migrate is not running sync_pgviews
+        call_command("migrate")  # migrate is not running sync_pgviews
         with connection.cursor() as cursor:
             cursor.execute(
-                f"SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
+                "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
             )
             exists = cursor.fetchone()[0]
-            self.assertFalse(exists, f"Materialized view viewtest_materializedrelatedview should not exist.")
+            self.assertFalse(exists, "Materialized view viewtest_materializedrelatedview should not exist.")
 
-        call_command("sync_pgviews") # explicitly run sync_pgviews
+        call_command("sync_pgviews")  # explicitly run sync_pgviews
         with connection.cursor() as cursor:
             cursor.execute(
-                f"SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
+                "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
             )
             exists = cursor.fetchone()[0]
-            self.assertTrue(exists, f"Materialized view viewtest_materializedrelatedview should exist.")
+            self.assertTrue(exists, "Materialized view viewtest_materializedrelatedview should exist.")
