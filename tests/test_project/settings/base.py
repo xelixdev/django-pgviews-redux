@@ -174,3 +174,5 @@ LOGGING = {
         "django_pgviews": {"level": "INFO", "handlers": ["console"]},
     },
 }
+
+MATERIALIZED_VIEWS_SYNC_DISABLED = False
