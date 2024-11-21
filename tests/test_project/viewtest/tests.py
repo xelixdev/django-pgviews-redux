@@ -9,6 +9,7 @@ from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS, connection
+from django.db.models.signals import post_migrate
 from django.db.utils import DatabaseError, OperationalError
 from django.dispatch import receiver
 from django.test import TestCase, override_settings
@@ -448,7 +449,6 @@ class TestMaterializedViewSyncDisabledSettings(TestCase):
         test execution. To address this, we store the original receivers and settings,
         then restore them in tearDown to avoid affecting other tests.
         """
-        from django.db.models.signals import post_migrate
 
         # Store original receivers and settings
         self._original_receivers = list(post_migrate.receivers)
@@ -471,7 +471,6 @@ class TestMaterializedViewSyncDisabledSettings(TestCase):
 
     def tearDown(self):
         """Restore original signal receivers and app config state"""
-        from django.db.models.signals import post_migrate
 
         post_migrate.receivers.clear()
         post_migrate.receivers.extend(self._original_receivers)
