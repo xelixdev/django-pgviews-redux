@@ -3,14 +3,16 @@
 from contextlib import closing
 from datetime import timedelta
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS, connection
+from django.db.models.signals import post_migrate
 from django.db.utils import DatabaseError, OperationalError
 from django.dispatch import receiver
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from django_pgviews.signals import all_views_synced, view_synced
@@ -438,3 +440,59 @@ class MakeWhereTestCase(TestCase):
         where_fragment, params = _make_where(schemaname=None, tablename=["test_tablename1", "test_tablename2"])
         self.assertEqual(where_fragment, "tablename IN (%s, %s)")
         self.assertEqual(params, ["test_tablename1", "test_tablename2"])
+
+
+class TestMaterializedViewSyncDisabledSettings(TestCase):
+    def setUp(self):
+        """
+        NOTE: By default, Django runs and registers signals with default values during
+        test execution. To address this, we store the original receivers and settings,
+        then restore them in tearDown to avoid affecting other tests.
+        """
+
+        # Store original receivers and settings
+        self._original_receivers = list(post_migrate.receivers)
+        self._original_config = apps.get_app_config("django_pgviews").counter
+
+        # Clear existing signal receivers
+        post_migrate.receivers.clear()
+
+        # Get the app config and reset counter
+        config = apps.get_app_config("django_pgviews")
+        config.counter = 0
+
+        # Reload app config with new settings
+        with override_settings(MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE=True):
+            config.ready()
+
+        # Drop the view if it exists
+        with connection.cursor() as cursor:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS viewtest_materializedrelatedview CASCADE;")
+
+    def tearDown(self):
+        """Restore original signal receivers and app config state"""
+
+        post_migrate.receivers.clear()
+        post_migrate.receivers.extend(self._original_receivers)
+        apps.get_app_config("django_pgviews").counter = self._original_config
+
+    def test_migrate_materialized_views_sync_disabled(self):
+        self.assertEqual(models.TestModel.objects.count(), 0)
+
+        models.TestModel.objects.create(name="Test")
+
+        call_command("migrate")  # migrate is not running sync_pgviews
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
+            )
+            exists = cursor.fetchone()[0]
+            self.assertFalse(exists, "Materialized view viewtest_materializedrelatedview should not exist.")
+
+        call_command("sync_pgviews")  # explicitly run sync_pgviews
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'viewtest_materializedrelatedview');"
+            )
+            exists = cursor.fetchone()[0]
+            self.assertTrue(exists, "Materialized view viewtest_materializedrelatedview should exist.")
