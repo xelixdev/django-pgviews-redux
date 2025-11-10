@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-pgviews-redux"
-version = "0.11.0"
+version = "0.12.0"
 description = "Create and manage Postgres SQL Views in Django"
 authors = ["Mikuláš Poul <mikulas.poul@xelix.com>"]
 readme = "README.md"
@@ -9,15 +9,16 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.0",
     "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
     "License :: Public Domain",
     "License :: OSI Approved :: The Unlicense (Unlicense)",
 ]
@@ -34,7 +35,7 @@ python = ">=3.6"
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [

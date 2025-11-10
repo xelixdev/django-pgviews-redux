@@ -128,7 +128,7 @@ def _make_where(**kwargs):
             # skip key if value is not specified
             continue
 
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             in_fragment = ", ".join("%s" for _ in range(len(value)))
             where_fragments.append(f"{key} IN ({in_fragment})")
             params.extend(list(value))

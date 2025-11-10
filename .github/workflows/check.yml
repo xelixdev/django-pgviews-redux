@@ -15,17 +15,17 @@ jobs:
       fail-fast: false
       matrix:
         py:
+          - "3.14"
+          - "3.13"
           - "3.12"
           - "3.11"
           - "3.10"
-          - "3.9"
-          - "3.8"
         postgres-version:
-#          - 12 - 5.1 doesn't support 12 anymore, let's just stop running tests for it
-          - 13
           - 14
           - 15
           - 16
+          - 17
+          - 18
     steps:
       - name: Setup python for test ${{ matrix.py }}
         uses: actions/setup-python@v6
