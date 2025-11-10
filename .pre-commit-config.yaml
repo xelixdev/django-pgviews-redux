@@ -1,8 +1,8 @@
 default_language_version:
-  python: python3.9
+  python: python3.10
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: 'v0.13.1'
+  rev: 'v0.14.4'
   hooks:
   - id: ruff
     args: [ "--fix" ]
