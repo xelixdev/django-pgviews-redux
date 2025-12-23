@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from django import apps
 from django.db.models import signals
@@ -16,7 +17,7 @@ class ViewConfig(apps.AppConfig):
     name = "django_pgviews"
     verbose_name = "Django Postgres Views"
 
-    def sync_pgviews(self, sender, app_config, using, **kwargs):
+    def sync_pgviews(self, sender: Any, app_config: apps.AppConfig, using: str, **kwargs: Any) -> None:
         """
         Forcibly sync the views.
         """
@@ -40,7 +41,7 @@ class ViewConfig(apps.AppConfig):
             )
             self.counter = 0
 
-    def ready(self):
+    def ready(self) -> None:
         """
         Find and setup the apps to set the post_migrate hooks for.
         """

@@ -1,10 +1,13 @@
 import logging
+from argparse import ArgumentParser
+from typing import Any
 
 from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
-from django_pgviews.view import MaterializedView, View, clear_view
+from django_pgviews.management.operations.clear import clear_view
+from django_pgviews.view import MaterializedView, View
 
 logger = logging.getLogger("django_pgviews.sync_pgviews")
 
@@ -12,14 +15,14 @@ logger = logging.getLogger("django_pgviews.sync_pgviews")
 class Command(BaseCommand):
     help = """Clear Postgres views. Use this before running a migration"""
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
             "--database",
             default=DEFAULT_DB_ALIAS,
             help='Nominates a database to synchronize. Defaults to the "default" database.',
         )
 
-    def handle(self, database, **options):
+    def handle(self, database: str, **options: Any) -> None:
         for view_cls in apps.get_models():
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
                 continue
