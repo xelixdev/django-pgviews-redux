@@ -101,27 +101,23 @@ class SchemaTest(TestCase):
         def on_view_synced(sender, **kwargs):
             synced.append(sender)
             if sender == SchemaMonthlyObservationView:
-                assert (
-                    dict(
-                        {"status": "EXISTS", "has_changed": False},
-                        update=False,
-                        force=False,
-                        signal=view_synced,
-                        using="schema_db",
-                    )
-                    == kwargs
-                )
+                assert {
+                    "status": "EXISTS",
+                    "has_changed": False,
+                    "update": False,
+                    "force": False,
+                    "signal": view_synced,
+                    "using": "schema_db",
+                } == kwargs
             if sender == SchemaMonthlyObservationMaterializedView:
-                assert (
-                    dict(
-                        {"status": "UPDATED", "has_changed": True},
-                        update=False,
-                        force=False,
-                        signal=view_synced,
-                        using="schema_db",
-                    )
-                    == kwargs
-                )
+                assert {
+                    "status": "UPDATED",
+                    "has_changed": True,
+                    "update": False,
+                    "force": False,
+                    "signal": view_synced,
+                    "using": "schema_db",
+                } == kwargs
 
         call_command("sync_pgviews", database="schema_db", update=False)
 

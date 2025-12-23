@@ -228,7 +228,8 @@ class ViewTestCase(TestCase):
             if sender in expected:
                 expected_kwargs = expected.pop(sender)
                 assert (
-                    dict(expected_kwargs, update=False, force=False, signal=view_synced, using=DEFAULT_DB_ALIAS)
+                    expected_kwargs
+                    | {"update": False, "force": False, "signal": view_synced, "using": DEFAULT_DB_ALIAS}
                     == kwargs
                 )
 
