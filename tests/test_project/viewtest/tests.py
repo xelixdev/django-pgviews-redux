@@ -15,6 +15,7 @@ from django.dispatch import receiver
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from django_pgviews.exceptions import ConcurrentIndexNotDefinedError
 from django_pgviews.management.operations._utils import _make_where, _schema_and_name
 from django_pgviews.signals import all_views_synced, view_synced
 
@@ -134,7 +135,10 @@ class ViewTestCase(TestCase):
 
         self.assertEqual(models.MaterializedRelatedView.objects.count(), 1, "Materialized view should have updated")
 
-        models.MaterializedRelatedViewWithIndex.refresh(concurrently=True)
+        with self.assertRaises(ConcurrentIndexNotDefinedError):
+            models.MaterializedRelatedView.refresh(concurrently=True, strict=True)
+
+        models.MaterializedRelatedViewWithIndex.refresh(concurrently=True, strict=True)
 
         self.assertEqual(
             models.MaterializedRelatedViewWithIndex.objects.count(),
