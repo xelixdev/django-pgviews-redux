@@ -28,3 +28,6 @@ class MonthlyObservation(view.ReadOnlyMaterializedView):
     sql = VIEW_SQL
     date = models.DateField()
     count = models.IntegerField()
+
+    class Meta:
+        managed = False
