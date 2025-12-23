@@ -31,6 +31,9 @@ class SchemaMonthlyObservationView(view.View):
     date = models.DateField()
     count = models.IntegerField()
 
+    class Meta:
+        managed = False
+
 
 class SchemaMonthlyObservationMaterializedView(view.MaterializedView):
     sql = VIEW_SQL
