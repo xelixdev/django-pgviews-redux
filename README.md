@@ -1,7 +1,7 @@
 # SQL Views for Postgres
 
 Adds first-class support for [PostgreSQL Views][pg-views] in the Django ORM.
-Fork of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for Django 3.2+.
+Fork of the original [django-pgviews][django-pgviews] by [mypebble][mypebble] with support for later Djangos, Pythons, and new features.
 
 [pg-views]: http://www.postgresql.org/docs/9.1/static/sql-createview.html
 [django-pgviews]: https://github.com/mypebble/django-pgviews
@@ -49,8 +49,8 @@ class PreferredCustomer(pg.View):
       managed = False
 ```
 
-**NOTE** It is important that we include the `managed = False` in the `Meta` so
-Django 1.7 migrations don't attempt to create DB tables for this view.
+> [!NOTE]
+> It is important that we include the `managed = False` in the `Meta` so Django migrations don't attempt to create DB tables for this view.
 
 The SQL produced by this might look like:
 
@@ -82,7 +82,7 @@ class PreferredCustomer(pg.View):
 ## Usage
 
 To map onto a View, simply extend `pg_views.view.View`, assign SQL to the
-`sql` argument and define a `db_table`. You must _always_ set `managed = False`
+`sql` argument, and define a `db_table`. You must _always_ set `managed = False`
 on the `Meta` class.
 
 Views can be created in a number of ways:
@@ -132,12 +132,12 @@ class PreferredCustomer(pg.View):
       managed = False
 ```
 
-This will take all fields on `myapp.Customer` and apply them to
-`PreferredCustomer`
+This will take all fields on `myapp.Customer` and apply them to `PreferredCustomer`
 
 ## Features
 
 ### Configuration
+
 `MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE`
 
 When set to True, it skips running `sync_pgview` during migrations, which can be useful if you want to control the synchronization manually or avoid potential overhead during migrations. (default: False)
@@ -147,9 +147,8 @@ MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE = True
 
 ### Updating Views
 
-Sometimes your models change and you need your Database Views to reflect the new
-data. Updating the View logic is as simple as modifying the underlying SQL and
-running:
+Sometimes your models change, and you need your Database Views to reflect the new data.
+Updating the View logic is as simple as modifying the underlying SQL and running:
 
 ```
 python manage.py sync_pgviews --force
@@ -159,12 +158,12 @@ This will forcibly update any views that conflict with your new SQL.
 
 ### Dependencies
 
-You can specify other views you depend on. This ensures the other views are
-installed beforehand. Using dependencies also ensures that your views get
-refreshed correctly when using `sync_pgviews --force`.
+You can specify other views you depend on.
+This ensures the other views are installed beforehand.
+Using dependencies also ensures that your views get refreshed correctly when using `sync_pgviews --force`.
 
-**Note:** Views are synced after the Django application has migrated and adding
-models to the dependency list will cause syncing to fail.
+> [!NOTE]
+> Views are synced after the Django application has migrated, and adding models to the dependency list will cause syncing to fail.
 
 Example:
 
@@ -184,12 +183,9 @@ class PreferredCustomer(pg.View):
 ### Materialized Views
 
 Postgres 9.3 and up supports [materialized views](http://www.postgresql.org/docs/current/static/sql-creatematerializedview.html)
-which allow you to cache the results of views, potentially allowing them
-to load faster.
+which allow you to cache the results of views, potentially allowing them to load faster.
 
-However, you do need to manually refresh the view. To do this automatically,
-you can attach [signals](https://docs.djangoproject.com/en/1.8/ref/signals/)
-and call the refresh function.
+However, you do need to manually refresh the view. To do this automatically, you can attach [signals](https://docs.djangoproject.com/en/1.8/ref/signals/) and call the refresh function.
 
 Example:
 
@@ -477,9 +473,13 @@ to pin views to specific databases.
       <td>5.0</td>
       <td>0.9.4</td>
     </tr>
+    <tr>
+      <td>6.0</td>
+      <td>0.13.0</td>
+    </tr>
   </tbody>
 </table>
 
-## Python 3 Support
+## Python Support
 
-Django PGViews Redux only officially supports Python 3.7+, it might work on 3.6, but there's no guarantees.
+Django PGViews Redux only officially supports Python 3.10+, it might work on previous versions, but there are no guarantees.

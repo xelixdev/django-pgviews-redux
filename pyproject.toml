@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-pgviews-redux"
-version = "0.12.0"
+version = "0.13.0"
 description = "Create and manage Postgres SQL Views in Django"
 authors = ["Mikuláš Poul <mikulas.poul@xelix.com>"]
 readme = "README.md"
@@ -16,11 +16,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5.0",
-    "Framework :: Django :: 5.1",
     "Framework :: Django :: 5.2",
-    "License :: Public Domain",
-    "License :: OSI Approved :: The Unlicense (Unlicense)",
+    "Framework :: Django :: 6.0",
 ]
 include = ["UNLICENSE"]
 repository = "https://github.com/xelixdev/django-pgviews-redux"
@@ -67,7 +64,6 @@ select = [
 # Never enforce...
 ignore = [
     "E501",   # line length violations
-    "PT004",  # missing-fixture-name-underscore
     "SIM108", # use-ternary-operator
     "RET505", # superfluous-else-return
     "RET506", # superfluous-else-raise
