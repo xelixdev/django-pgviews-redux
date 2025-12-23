@@ -13,7 +13,7 @@ from django.db.backends.utils import truncate_name
 from django.db.models.query import QuerySet
 
 from django_pgviews.compat import ProgrammingError
-from django_pgviews.db import get_fields_by_name
+from django_pgviews.db.fields import get_fields_by_name
 
 FIELD_SPEC_REGEX = r"^([A-Za-z_][A-Za-z0-9_]*)\." r"([A-Za-z_][A-Za-z0-9_]*)\." r"(\*|(?:[A-Za-z_][A-Za-z0-9_]*))$"
 FIELD_SPEC_RE = re.compile(FIELD_SPEC_REGEX)
