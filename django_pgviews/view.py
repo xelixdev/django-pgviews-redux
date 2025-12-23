@@ -22,7 +22,7 @@ from django.db import connections, models, router
 from django.db.backends.postgresql.base import DatabaseWrapper
 
 from django_pgviews.db.fields import get_fields_by_name
-from django_pgviews.exceptions import SQLNotDefinedError
+from django_pgviews.exceptions import ConcurrentIndexNotDefinedError, SQLNotDefinedError
 from django_pgviews.managers import ReadOnlyViewManager
 
 FIELD_SPEC_REGEX = r"^([A-Za-z_][A-Za-z0-9_]*)\." r"([A-Za-z_][A-Za-z0-9_]*)\." r"(\*|(?:[A-Za-z_][A-Za-z0-9_]*))$"
@@ -194,11 +194,20 @@ class MaterializedView(View):
     _concurrent_index: str | None
 
     @classmethod
-    def refresh(cls, concurrently: bool = False) -> None:
+    def refresh(cls, concurrently: bool = False, strict: bool = False) -> None:
         conn = cls.get_view_connection(using=router.db_for_write(cls), restricted_mode=False)
         if not conn:
             logger.warning("Failed to find connection to refresh %s", cls)
             return
+
+        if concurrently and cls._concurrent_index is None:
+            if strict:
+                raise ConcurrentIndexNotDefinedError(
+                    f"Cannot refresh concurrently without concurrent index on {cls.__name__}"
+                )
+            else:
+                logger.warning("Cannot refresh concurrently without concurrent index on %s", cls.__name__)
+
         cursor_wrapper = conn.cursor()
         cursor = cursor_wrapper.cursor
         try:

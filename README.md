@@ -221,8 +221,11 @@ Postgres 9.4 and up allow materialized views to be refreshed concurrently, witho
 unique index exists on the materialized view. To enable concurrent refresh, specify the name of a column that can be
 used as a unique index on the materialized view. Unique index can be defined on more than one column of a materialized
 view. Once enabled, passing `concurrently=True` to the model's refresh method will result in postgres performing the
-refresh concurrently. (Note that the refresh method itself blocks until the refresh is complete; concurrent refresh is
-most useful when materialized views are updated in another process or thread.)
+refresh concurrently. Note that the refresh method itself blocks until the refresh is complete; concurrent refresh is
+most useful when materialized views are used in another process or thread.
+
+By default, if you pass `concurrently=True` to the model's refresh method without the concurrent index defined,
+only a warning is logged. You can pass `strict=True` to it as well to raise an exception instead (`ConcurrentIndexNotDefinedError`).
 
 Example:
 
@@ -391,7 +394,7 @@ Provides args:
 
 ### Multiple databases
 
-django-pgviews can use multiple databases.  Similar to Django's `migrate`
+django-pgviews can use multiple databases. Similar to Django's `migrate`
 management command, our commands (`clear_pgviews`, `refresh_pgviews`,
 `sync_pgviews`) operate on one database at a time. You can specify which
 database to synchronize by providing the `--database` option. For example:
