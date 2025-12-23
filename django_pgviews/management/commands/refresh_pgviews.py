@@ -16,7 +16,13 @@ class Command(BaseCommand):
             "--concurrently",
             action="store_true",
             dest="concurrently",
-            help="Refresh concurrently if the materialized view supports it",
+            help="Refresh concurrently if the materialized view supports it.",
+        )
+        parser.add_argument(
+            "--strict",
+            action="store_true",
+            dest="strict",
+            help="Raise error if concurrently refreshing materialized without a concurrent index.",
         )
         parser.add_argument(
             "--database",
@@ -24,5 +30,5 @@ class Command(BaseCommand):
             help='Nominates a database to synchronize. Defaults to the "default" database.',
         )
 
-    def handle(self, concurrently: bool, database: str, **options: Any) -> None:
-        ViewRefresher().run(concurrently=concurrently, using=database)
+    def handle(self, concurrently: bool, strict: bool, database: str, **options: Any) -> None:
+        ViewRefresher().run(concurrently=concurrently, using=database, strict=strict)
