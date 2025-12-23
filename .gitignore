@@ -33,7 +33,9 @@ pip-log.txt
 
 # Unit test / coverage reports
 .coverage
+.coverage.py*
 .tox
+pytest.py*
 
 #Translations
 *.mo
@@ -55,3 +57,4 @@ tags
 pip-wheel-metadata
 
 poetry.lock
+

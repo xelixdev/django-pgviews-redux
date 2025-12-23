@@ -46,7 +46,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.py }}-${{ matrix.postgres-version }}
-          path: .coverage.*
+          path: |
+            .coverage.*
+            pytest.*.xml
           include-hidden-files: true
           if-no-files-found: ignore
 
@@ -68,20 +70,26 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install coverage
+        run: pip install coverage junitparser
       - name: Combine coverage
         run: |
           coverage combine coverage-reports/
           coverage xml
           coverage report -m > coverage.txt
+      - name: Merge JUnit XML
+        run: |
+          junitparser merge coverage-reports/pytest.*.xml junit.xml
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
           pytest-xml-coverage-path: coverage.xml
           pytest-coverage-path: coverage.txt
+          junitxml-path: ./junit.xml
           title: Coverage Report
           badge-title: Coverage
           hide-badge: false
           hide-report: false
           create-new-comment: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-only-changed-files: true
+          xml-skip-covered: true
