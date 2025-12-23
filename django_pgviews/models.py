@@ -142,6 +142,7 @@ class ViewRefresher(RunBacklog):
     def run_backlog(self, backlog: list[type[View]], **kwargs: Any):
         concurrently: bool = kwargs["concurrently"]
         using: str = kwargs["using"]
+        strict: bool = kwargs.get("strict", False)
 
         new_backlog = []
         for view_cls in backlog:
@@ -163,7 +164,7 @@ class ViewRefresher(RunBacklog):
                 continue
 
             if issubclass(view_cls, MaterializedView):
-                view_cls.refresh(concurrently=concurrently)
+                view_cls.refresh(concurrently=concurrently, strict=strict)
                 logger.info("pgview %s refreshed", name)
 
             self.finished.append(name)

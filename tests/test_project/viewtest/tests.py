@@ -318,6 +318,9 @@ class ViewTestCase(TestCase):
         self.assertEqual(models.MaterializedRelatedViewWithIndex.objects.count(), 2)
         self.assertEqual(models.MaterializedRelatedViewWithNoData.objects.count(), 2)
 
+        with self.assertRaises(ConcurrentIndexNotDefinedError):
+            call_command("refresh_pgviews", concurrently=True, strict=True)
+
 
 class TestMaterializedViewsCheckSQLSettings(TestCase):
     def setUp(self):
