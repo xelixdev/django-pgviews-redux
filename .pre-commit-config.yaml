@@ -7,3 +7,12 @@ repos:
   - id: ruff
     args: [ "--fix" ]
   - id: ruff-format
+- repo: https://github.com/facebook/pyrefly-pre-commit
+  rev: 0.46.0
+  hooks:
+    - id: pyrefly-check
+      name: Pyrefly (type checking)
+      language: system
+      pass_filenames: false
+ci:
+  skip: [pyrefly-check]
