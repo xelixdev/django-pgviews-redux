@@ -410,6 +410,22 @@ need to take some additional steps. Please refer to Django's [Automatic database
 routing](https://docs.djangoproject.com/en/3.2/topics/db/multi-db/#automatic-database-routing)
 to pin views to specific databases.
 
+## Management commands
+
+### `sync_pgviews`
+
+The primary management command for `django-pgviews`, it will create or update views. See `--help` for more available parameters.
+
+### `refresh_pgviews`
+
+Refresh only materialized views, by default, it will do it non-concurrently. `--concurrently` can be used to make the refresh concurrently.
+Adding `--strict` will make the command raise an exception if the concurrent index is not defined while `--concurrently` is used.
+See `--help` for more available parameters.
+
+### `clear_pgviews`
+
+Will delete all views and materialized views from the database.
+See `--help` for more available parameters.
 
 ## Django Compatibility
 
