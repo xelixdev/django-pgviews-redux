@@ -1,10 +1,10 @@
 import datetime as dt
 from contextlib import closing
 
+import pytest
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS, connections
 from django.dispatch import receiver
-from django.test import TestCase
 
 from django_pgviews.signals import view_synced
 from tests.test_project.schemadbtest.models import (
@@ -16,7 +16,8 @@ from tests.test_project.viewtest.models import RelatedView
 from tests.test_project.viewtest.test_views import get_list_of_indexes
 
 
-class WeatherPinnedViewConnectionTest(TestCase):
+@pytest.mark.django_db
+class TestWeatherPinnedViewConnection:
     """Weather views should only return schema_db when pinned."""
 
     def test_schema_view_using_schema_db(self):
@@ -40,7 +41,8 @@ class WeatherPinnedViewConnectionTest(TestCase):
         assert RelatedView.get_view_connection(using=DEFAULT_DB_ALIAS) == connections["default"]
 
 
-class SchemaTest(TestCase):
+@pytest.mark.django_db(databases=(DEFAULT_DB_ALIAS, "schema_db"))
+class TestSchema:
     """View.refresh() should automatically select the appropriate schema."""
 
     databases = {DEFAULT_DB_ALIAS, "schema_db"}
