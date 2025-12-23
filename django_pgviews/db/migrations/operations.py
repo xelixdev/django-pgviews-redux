@@ -86,6 +86,19 @@ class RegisterViewOperation(ViewOperation):
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
         pass
 
+    def reduce(self, operation: Operation, app_label: str) -> None:
+        if (
+            not isinstance(operation, (DeleteViewOperation, RegisterViewOperation))
+            or self.name_lower != operation.name_lower
+            or self.materialized != operation.materialized
+            or self.db_name != operation.db_name
+        ):
+            return False
+
+        if isinstance(operation, RegisterViewOperation):
+            return [operation]
+        return []
+
 
 class DeleteViewOperation(ViewOperation):
     category = OperationCategory.REMOVAL
@@ -109,3 +122,16 @@ class DeleteViewOperation(ViewOperation):
         connection = connections[schema_editor.connection.alias]
 
         clear_view(connection, self.db_name, materialized=self.materialized)
+
+    def reduce(self, operation: Operation, app_label: str) -> None:
+        if (
+            not isinstance(operation, (DeleteViewOperation, RegisterViewOperation))
+            or self.name_lower != operation.name_lower
+            or self.materialized != operation.materialized
+            or self.db_name != operation.db_name
+        ):
+            return False
+
+        if isinstance(operation, DeleteViewOperation):
+            return [operation]
+        return False

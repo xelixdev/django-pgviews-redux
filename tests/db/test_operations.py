@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.db.migrations.optimizer import MigrationOptimizer
 from django.db.migrations.state import ProjectState
 
-from django_pgviews.db.migrations.operations import DeleteViewOperation, RegisterViewOperation, ViewState
+from django_pgviews.db.migrations.operations import DeleteViewOperation, RegisterViewOperation, ViewOperation, ViewState
 from django_pgviews.view import MaterializedView, View
 
 
@@ -94,3 +95,89 @@ def test_delete_view_operation_database_forwards_materialized(schema_editor: Mag
         # clear_view(connection, self.db_name, materialized=self.materialized)
         assert args[1] == "test_materialized_view"
         assert kwargs["materialized"] is True
+
+
+@pytest.mark.parametrize(
+    ["operations", "expected"],
+    [
+        pytest.param(
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockMatView", materialized=True, db_name="test_mat_view"),
+            ],
+            None,
+            id="two_different_views",
+        ),
+        pytest.param(
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            id="two_identical_create",
+        ),
+        pytest.param(
+            [
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            [
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            id="two_identical_delete",
+        ),
+        pytest.param(
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            [],
+            id="delete_identical",
+        ),
+        pytest.param(
+            [
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            [
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+            ],
+            id="register_identical",
+        ),
+        pytest.param(
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockView", materialized=True, db_name="test_view"),
+            ],
+            [
+                RegisterViewOperation(name="OpMockView", materialized=True, db_name="test_view"),
+            ],
+            id="change_materialized",
+        ),
+        pytest.param(
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                DeleteViewOperation(name="OpMockView", materialized=False, db_name="test_view"),
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view_changed"),
+            ],
+            [
+                RegisterViewOperation(name="OpMockView", materialized=False, db_name="test_view_changed"),
+            ],
+            id="change_db_name",
+        ),
+    ],
+)
+def test_optimize(operations: list[ViewOperation], expected: list[ViewOperation] | None):
+    if expected is None:
+        expected = operations
+    optimized = MigrationOptimizer().optimize(operations, "test_app")
+    assert len(optimized) == len(expected)
+
+    for op, exp_op in zip(optimized, expected, strict=True):
+        assert op.name == exp_op.name
+        assert op.materialized == exp_op.materialized
+        assert op.db_name == exp_op.db_name
