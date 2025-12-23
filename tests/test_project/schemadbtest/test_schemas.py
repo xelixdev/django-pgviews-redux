@@ -7,10 +7,13 @@ from django.dispatch import receiver
 from django.test import TestCase
 
 from django_pgviews.signals import view_synced
-
-from ..viewtest.models import RelatedView
-from ..viewtest.tests import get_list_of_indexes
-from .models import SchemaMonthlyObservationMaterializedView, SchemaMonthlyObservationView, SchemaObservation
+from tests.test_project.schemadbtest.models import (
+    SchemaMonthlyObservationMaterializedView,
+    SchemaMonthlyObservationView,
+    SchemaObservation,
+)
+from tests.test_project.viewtest.models import RelatedView
+from tests.test_project.viewtest.tests_views import get_list_of_indexes
 
 
 class WeatherPinnedViewConnectionTest(TestCase):

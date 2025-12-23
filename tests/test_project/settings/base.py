@@ -1,4 +1,5 @@
 # Django settings for test_project project.
+import os
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -17,25 +18,25 @@ DATABASES = {
         "NAME": "django_pgviews",
         "USER": "postgres",
         "PASSWORD": "postgres",
-        "HOST": "",
-        "PORT": "",
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
     },
     "weather_db": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres_weatherdb",
-        "USER": "django_pgviews",
+        "USER": "postgres",
         "PASSWORD": "postgres",
-        "HOST": "",
-        "PORT": "",
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
     },
     "schema_db": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres_schemadb",
         "OPTIONS": {"options": "-c search_path=other"},
-        "USER": "django_pgviews",
+        "USER": "postgres",
         "PASSWORD": "postgres",
-        "HOST": "",
-        "PORT": "",
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
     },
 }
 DATABASE_ROUTERS = ["test_project.routers.DBRouter"]
@@ -62,10 +63,6 @@ SITE_ID = 1
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
-
-# If you set this to False, Django will not format dates, numbers and
-# calendars according to the current locale.
-USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
@@ -147,9 +144,9 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
     "django_pgviews",
-    "test_project.viewtest",
-    "test_project.multidbtest",
-    "test_project.schemadbtest",
+    "tests.test_project.viewtest",
+    "tests.test_project.multidbtest",
+    "tests.test_project.schemadbtest",
 )
 
 # A sample logging configuration. The only tangible logging

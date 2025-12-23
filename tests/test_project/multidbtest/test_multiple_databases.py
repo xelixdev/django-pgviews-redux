@@ -6,9 +6,8 @@ from django.dispatch import receiver
 from django.test import TestCase
 
 from django_pgviews.signals import view_synced
-
-from ..viewtest.models import RelatedView
-from .models import MonthlyObservation, Observation
+from tests.test_project.multidbtest.models import MonthlyObservation, Observation
+from tests.test_project.viewtest.models import RelatedView
 
 
 class WeatherPinnedViewConnectionTest(TestCase):
