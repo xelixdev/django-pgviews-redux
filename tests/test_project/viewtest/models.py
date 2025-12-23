@@ -20,9 +20,15 @@ class Superusers(view.View):
     projection = ["auth.User.*"]
     sql = """SELECT * FROM auth_user WHERE is_superuser = TRUE;"""
 
+    class Meta:
+        managed = False
+
 
 class LatestSuperusers(view.View):  # concept doesn't make much sense, but it will get the job done
     projection = ["auth.User.*"]
+
+    class Meta:
+        managed = False
 
     @classmethod
     def get_sql(cls):
@@ -39,25 +45,40 @@ class SimpleUser(view.View):
     # seemed like more fun :)
     sql = """SELECT username, password, row_number() OVER () AS id FROM auth_user;"""
 
+    class Meta:
+        managed = False
+
 
 class RelatedView(view.ReadOnlyView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
     model = models.ForeignKey(TestModel, on_delete=models.CASCADE)
+
+    class Meta:
+        managed = False
 
 
 class MaterializedRelatedView(view.ReadOnlyMaterializedView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
     model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
 
+    class Meta:
+        managed = False
+
 
 class DependantView(view.ReadOnlyView):
     dependencies = ("viewtest.RelatedView",)
     sql = """SELECT model_id from viewtest_relatedview;"""
 
+    class Meta:
+        managed = False
+
 
 class DependantMaterializedView(view.ReadOnlyMaterializedView):
     dependencies = ("viewtest.MaterializedRelatedView",)
     sql = """SELECT model_id from viewtest_materializedrelatedview;"""
+
+    class Meta:
+        managed = False
 
 
 class MaterializedRelatedViewWithIndex(view.ReadOnlyMaterializedView):
@@ -95,10 +116,16 @@ class MaterializedRelatedViewWithNoData(view.ReadOnlyMaterializedView):
     model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
     with_data = False
 
+    class Meta:
+        managed = False
+
 
 class MaterializedRelatedViewWithReallyReallyReallyReallyReallyReallyLongName(view.ReadOnlyMaterializedView):
     sql = """SELECT id AS model_id, id FROM viewtest_testmodel"""
     model = models.ForeignKey(TestModel, on_delete=models.DO_NOTHING)
+
+    class Meta:
+        managed = False
 
 
 @receiver(signals.post_migrate)
