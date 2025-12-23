@@ -1,9 +1,12 @@
 import logging
+from typing import Any
 
 from django.apps import apps
 
+from django_pgviews.management.operations.create import create_view
+from django_pgviews.management.operations.create_materialized import create_materialized_view
 from django_pgviews.signals import all_views_synced, view_synced
-from django_pgviews.view import MaterializedView, View, create_materialized_view, create_view
+from django_pgviews.view import MaterializedView, View
 
 logger = logging.getLogger("django_pgviews.sync_pgviews")
 exists_logger = logging.getLogger("django_pgviews.sync_pgviews.exists")
@@ -12,11 +15,12 @@ exists_logger = logging.getLogger("django_pgviews.sync_pgviews.exists")
 class RunBacklog:
     def __init__(self) -> None:
         super().__init__()
+        self.finished: list[str] = []
+
+    def run(self, **kwargs: Any) -> bool:
         self.finished = []
 
-    def run(self, **kwargs):
-        self.finished = []
-        backlog = []
+        backlog: list[type[View]] = []
         for view_cls in apps.get_models():
             if not (isinstance(view_cls, type) and issubclass(view_cls, View) and hasattr(view_cls, "sql")):
                 continue
@@ -32,12 +36,17 @@ class RunBacklog:
 
         return True
 
-    def run_backlog(self, backlog, **kwargs):
+    def run_backlog(self, backlog: list[type[View]], **kwargs: Any) -> list[type[View]]:
         raise NotImplementedError
 
 
 class ViewSyncer(RunBacklog):
-    def run(self, force, update, using, materialized_views_check_sql_changed=False, **options):
+    def run(self, **kwargs: Any) -> bool:
+        force: bool = kwargs["force"]
+        update: bool = kwargs["update"]
+        using: str = kwargs["using"]
+        materialized_views_check_sql_changed: bool = kwargs.get("materialized_views_check_sql_changed", False)
+
         if super().run(
             force=force,
             update=update,
@@ -45,8 +54,10 @@ class ViewSyncer(RunBacklog):
             materialized_views_check_sql_changed=materialized_views_check_sql_changed,
         ):
             all_views_synced.send(sender=None, using=using)
+            return True
+        return False
 
-    def run_backlog(self, backlog, *, force, update, using, materialized_views_check_sql_changed, **kwargs):
+    def run_backlog(self, backlog: list[type[View]], **kwargs: Any):
         """Installs the list of models given from the previous backlog
 
         If the correct dependent views have not been installed, the view
@@ -54,6 +65,12 @@ class ViewSyncer(RunBacklog):
 
         Eventually we get to a point where all dependencies are sorted.
         """
+
+        force: bool = kwargs["force"]
+        update: bool = kwargs["update"]
+        using: str = kwargs["using"]
+        materialized_views_check_sql_changed: bool = kwargs["materialized_views_check_sql_changed"]
+
         new_backlog = []
         for view_cls in backlog:
             skip = False
@@ -69,7 +86,7 @@ class ViewSyncer(RunBacklog):
                     logger.info("Skipping pgview %s (migrations not allowed on %s)", name, using)
                     continue  # Skip
 
-                if skip is True:
+                if skip:
                     new_backlog.append(view_cls)
                     logger.info("Putting pgview at back of queue: %s", name)
                     continue  # Skip
@@ -97,8 +114,8 @@ class ViewSyncer(RunBacklog):
                 )
                 self.finished.append(name)
             except Exception as exc:
-                exc.view_cls = view_cls
-                exc.python_name = name
+                exc.view_cls = view_cls  # type: ignore[missing-attribute]
+                exc.python_name = name  # type: ignore[missing-attribute]
                 raise
             else:
                 use_logger = logger
@@ -122,10 +139,10 @@ class ViewSyncer(RunBacklog):
 
 
 class ViewRefresher(RunBacklog):
-    def run(self, concurrently, using, **kwargs):
-        return super().run(concurrently=concurrently, using=using, **kwargs)
+    def run_backlog(self, backlog: list[type[View]], **kwargs: Any):
+        concurrently: bool = kwargs["concurrently"]
+        using: str = kwargs["using"]
 
-    def run_backlog(self, backlog, *, concurrently, using, **kwargs):
         new_backlog = []
         for view_cls in backlog:
             skip = False
@@ -135,12 +152,12 @@ class ViewRefresher(RunBacklog):
                     skip = True
                     break
 
-            if skip is True:
+            if skip:
                 new_backlog.append(view_cls)
                 logger.info("Putting pgview at back of queue: %s", name)
                 continue  # Skip
 
-            # Don't refresh views not associated with this database
+            # Don't refresh views which are not associated with this database
             connection = view_cls.get_view_connection(using=using, restricted_mode=True)
             if not connection:
                 continue

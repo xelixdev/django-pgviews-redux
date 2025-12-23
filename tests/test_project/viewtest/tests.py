@@ -15,8 +15,8 @@ from django.dispatch import receiver
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from django_pgviews.management.operations._utils import _make_where, _schema_and_name
 from django_pgviews.signals import all_views_synced, view_synced
-from django_pgviews.view import _make_where, _schema_and_name
 
 from . import models
 from .models import LatestSuperusers

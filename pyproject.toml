@@ -28,7 +28,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = ">=3.6"
+python = ">=3.10"
 
 [tool.ruff]
 line-length = 120
@@ -70,4 +70,16 @@ ignore = [
     "RET507", # superfluous-else-continue
     "RET508", # superfluous-else-break
     "B027",   # empty-method-without-abstract-decorator
+]
+
+[tool.pyrefly]
+project-includes = [
+    "django_pgviews/*.py*",
+]
+
+[dependency-groups]
+dev = [
+    "pyrefly (>=0.46.0,<0.47.0)",
+    "django-stubs (>=5.2.8,<6.0.0)",
+    "psycopg (>=3.3.2,<4.0.0)"
 ]
