@@ -5,6 +5,7 @@ import pytest
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS, connections
 from django.dispatch import receiver
+from pytest_django.fixtures import SettingsWrapper
 
 from django_pgviews.signals import view_synced
 from tests.test_project.schemadbtest.models import (
@@ -96,7 +97,11 @@ class TestSchema:
         SchemaMonthlyObservationMaterializedView.refresh()
         assert SchemaMonthlyObservationMaterializedView.objects.count() == 1
 
-    def test_view_exists_on_sync(self):
+    @pytest.fixture(autouse=True)
+    def check_sql_changed_disabled(self, settings: SettingsWrapper):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
+
+    def test_view_exists_on_sync(self) -> None:
         synced = []
 
         @receiver(view_synced)
