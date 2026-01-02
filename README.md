@@ -320,6 +320,23 @@ check the indexes on the table and delete any extra indexes and create any missi
 is done through the index name, so if you use custom names for your indexes, it might happen that it won't get updated
 on change of the content but not the name.
 
+#### Refreshing dependencies / dependants
+
+The `refresh` method on `MaterializedView` only refreshes the given view, not dependencies or dependants.
+If you want to refresh all views related to a given view(s), i.e. all dependencies and dependants, you can use the `refresh_specific_views` utility function.
+
+```python
+from django_pgviews.refresh import refresh_specific_views
+
+refresh_specific_views([SomeMaterializedView], concurrently=True, strict=True)
+```
+
+Under the hood that function is implemented usingh three public utility functions from `django_pgviews.dependencies`, which you can use directly if you need more control over the refresh process:
+
+- `get_views_dependendants`: Get all dependants of a given view(s).
+- `get_views_dependencies`: Get all dependencies of a given view(s).
+- `reorder_by_dependencies`: Reorder views to ensure that dependencies are refreshed before dependants.
+
 ### Schemas
 
 By default, the views will get created in the schema of the database, this is usually `public`.
