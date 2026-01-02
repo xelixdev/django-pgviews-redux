@@ -22,7 +22,7 @@ INSTALLED_APPS = (
 )
 ```
 
-## Examples
+## Basic example
 
 ```python
 from django.db import models
@@ -35,17 +35,14 @@ class Customer(models.Model):
     post_code = models.CharField(max_length=20)
     is_preferred = models.BooleanField(default=False)
 
-    class Meta:
-        app_label = 'myapp'
+    
+class PreferredCustomer(pg.View):    
+    name = models.CharField(max_length=100)
+    post_code = models.CharField(max_length=20)
+    
+    sql = """SELECT id, name, post_code FROM myapp_customer WHERE is_preferred IS TRUE"""
 
-class PreferredCustomer(pg.View):
-    projection = ['myapp.Customer.*',]
-    dependencies = ['myapp.OtherView',]
-    sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
-
     class Meta:
-      app_label = 'myapp'
-      db_table = 'myapp_preferredcustomer'
       managed = False
 ```
 
@@ -59,33 +56,16 @@ CREATE VIEW myapp_preferredcustomer AS
 SELECT * FROM myapp_customer WHERE is_preferred = TRUE;
 ```
 
-To create all your views, run ``python manage.py sync_pgviews``
+To create this view, run `python manage.py migrate`, or `python manage.py sync_pgviews`.
 
-You can also specify field names, which will map onto fields in your View:
-
-```python
-from django_pgviews import view as pg
-
-
-VIEW_SQL = """
-    SELECT name, post_code FROM myapp_customer WHERE is_preferred = TRUE
-"""
-
-
-class PreferredCustomer(pg.View):
-    name = models.CharField(max_length=100)
-    post_code = models.CharField(max_length=20)
-
-    sql = VIEW_SQL
-```
+Then you can query `PreferredCustomer` like any other model.
 
 ## Usage
 
-To map onto a View, simply extend `pg_views.view.View`, assign SQL to the
-`sql` argument, and define a `db_table`. You must _always_ set `managed = False`
-on the `Meta` class.
+To create a view, create a new class that subclasses `django_pgviews.view.View` instead of `models.Model`, 
+set `managed = False` on the `Meta` class, and define the `sql` class attribute with the definition of the view.
 
-Views can be created in a number of ways:
+Views can be created in two basic ways:
 
 1. Define fields to map onto the VIEW output
 2. Define a projection that describes the VIEW fields
@@ -98,20 +78,14 @@ Define the fields as you would with any Django Model:
 from django_pgviews import view as pg
 
 
-VIEW_SQL = """
-    SELECT name, post_code FROM myapp_customer WHERE is_preferred = TRUE
-"""
-
-
 class PreferredCustomer(pg.View):
     name = models.CharField(max_length=100)
     post_code = models.CharField(max_length=20)
 
-    sql = VIEW_SQL
+    sql = "SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE"
 
     class Meta:
       managed = False
-      db_table = 'my_sql_view'
 ```
 
 ### Define Projection
@@ -124,15 +98,53 @@ from django_pgviews import view as pg
 
 
 class PreferredCustomer(pg.View):
-    projection = ['myapp.Customer.*',]
+    projection = ['myapp.Customer.*']
     sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
 
     class Meta:
-      db_table = 'my_sql_view'
       managed = False
 ```
 
 This will take all fields on `myapp.Customer` and apply them to `PreferredCustomer`
+
+## Migrations
+
+When you run `makemigrations`, `django-pgviews` will detect changes in views and create migrations to register new views and to drop renamed or removed views.
+
+By default, when you run `migrate`, `django-pgviews` will create or update your views – you may turn this off with `MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE`, see below.
+
+### Autodetector
+
+If you use another library which updates the Django migration AutoDetector, if you want to keep full functionality, you need to subclass
+the AutoDetector class to subclass from `django_pgviews.db.migrations.autodetector.PGViewsAutodetector` as well.
+
+### Changing upstream fields
+
+If you need to change a column which is used in a view definition, you may get an error like this:
+
+```
+django.db.utils.NotSupportedError: cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on materialized view some_view depends on column "some_column"
+```
+
+To handle this, you can use the migrations to drop the view before the migration gets applied, and then recreate it afterwards.
+
+1. Add an empty migration to the app with your view (`python manage.py makemigrations --empty app_name`)
+2. Add database operation to the migration
+```python
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                django_pgviews.db.migrations.operations.DeleteViewOperation(
+                    name="SomeView",  # CHANGEME
+                    materialized=True,  # CHANGEME
+                    db_name="some_view",  # CHANGEME
+                ),
+            ]
+        ),
+```
+3. Make the migration changing the column depend on the migration dropping the view
+
+When you then run migrations, the view will be dropped, the column will be changed, and the view will be recreated by the command after all migrations are applied. 
 
 ## Features
 
@@ -140,14 +152,14 @@ This will take all fields on `myapp.Customer` and apply them to `PreferredCustom
 
 `MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE`
 
-When set to True, it skips running `sync_pgview` during migrations, which can be useful if you want to control the synchronization manually or avoid potential overhead during migrations. (default: False)
+When set to True, it skips running `sync_pgviews` during migrations, which can be useful if you want to control the synchronization manually or avoid potential overhead during migrations. (default: False)
 ```
 MATERIALIZED_VIEWS_DISABLE_SYNC_ON_MIGRATE = True
 ```
 
 ### Updating Views
 
-Sometimes your models change, and you need your Database Views to reflect the new data.
+Sometimes your models change, and you need your views to reflect the new data.
 Updating the View logic is as simple as modifying the underlying SQL and running:
 
 ```
@@ -175,8 +187,6 @@ class PreferredCustomer(pg.View):
     sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
 
     class Meta:
-      app_label = 'myapp'
-      db_table = 'myapp_preferredcustomer'
       managed = False
 ```
 
@@ -254,7 +264,7 @@ def customer_saved(sender, action=None, instance=None, **kwargs):
 
 As the materialized view isn't defined through the usual Django model fields, any indexes defined there won't be
 created on the materialized view. Luckily Django provides a Meta option called `indexes` which can be used to add custom
-indexes to models. `pg_views` supports defining indexes on materialized views using this option.
+indexes to models. `django-pgviews` supports defining indexes on materialized views using this option.
 
 In the following example, one index will be created, on the `name` column. The `db_index=True` on the field definition
 for `post_code` will get ignored.
