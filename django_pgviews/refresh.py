@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterable
 
 from django_pgviews import view as pg
-from django_pgviews.dependencies import get_views_dependencies, get_views_dependendants, reorder_by_dependencies
+from django_pgviews.dependencies import get_views_dependants, get_views_dependencies, reorder_by_dependencies
 
 logger = logging.getLogger("django_pgviews.refresh")
 
@@ -22,7 +22,7 @@ def refresh_specific_views(
 
     to_refresh = list(to_refresh)
 
-    to_refresh.extend(get_views_dependendants(to_refresh))
+    to_refresh.extend(get_views_dependants(to_refresh))
     to_refresh.extend(get_views_dependencies(to_refresh))
     to_refresh = reorder_by_dependencies(to_refresh)
 

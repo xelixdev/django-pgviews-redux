@@ -1,4 +1,4 @@
-__all__ = ["get_views_dependencies", "get_views_dependendants", "reorder_by_dependencies"]
+__all__ = ["get_views_dependencies", "get_views_dependants", "reorder_by_dependencies"]
 
 from collections.abc import Iterable
 
@@ -7,7 +7,7 @@ from django.apps import apps
 from django_pgviews import view as pg
 
 
-def get_views_dependendants(mat_views: Iterable[type[pg.View]]) -> list[type[pg.View]]:
+def get_views_dependants(mat_views: Iterable[type[pg.View]]) -> list[type[pg.View]]:
     """
     Returns a list of materialized views which depend on the given materialized views.
     """
