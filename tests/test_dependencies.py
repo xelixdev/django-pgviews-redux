@@ -1,7 +1,7 @@
 import pytest
 
 from django_pgviews import view as pg
-from django_pgviews.dependencies import get_views_dependencies, get_views_dependendants, reorder_by_dependencies
+from django_pgviews.dependencies import get_views_dependants, get_views_dependencies, reorder_by_dependencies
 from tests.test_project.schemadbtest.models import SchemaMonthlyObservationMaterializedView
 from tests.test_project.viewtest.models import (
     DependantMaterializedView,
@@ -20,10 +20,8 @@ from tests.test_project.viewtest.models import (
         pytest.param([RelatedView], [DependantView], id="view"),
     ],
 )
-def test_get_views_dependendants(
-    views: list[type[pg.MaterializedView]], results: list[type[pg.MaterializedView]]
-) -> None:
-    assert get_views_dependendants(views) == results
+def test_get_views_dependants(views: list[type[pg.MaterializedView]], results: list[type[pg.MaterializedView]]) -> None:
+    assert get_views_dependants(views) == results
 
 
 @pytest.mark.parametrize(

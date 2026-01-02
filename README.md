@@ -343,7 +343,7 @@ refresh_specific_views([SomeMaterializedView], concurrently=True, strict=True)
 
 Under the hood that function is implemented usingh three public utility functions from `django_pgviews.dependencies`, which you can use directly if you need more control over the refresh process:
 
-- `get_views_dependendants`: Get all dependants of a given view(s).
+- `get_views_dependants`: Get all dependants of a given view(s).
 - `get_views_dependencies`: Get all dependencies of a given view(s).
 - `reorder_by_dependencies`: Reorder views to ensure that dependencies are refreshed before dependants.
 
