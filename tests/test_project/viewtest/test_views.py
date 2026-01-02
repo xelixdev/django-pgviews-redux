@@ -214,7 +214,9 @@ class TestView:
 
         assert models.MaterializedRelatedViewWithNoData.objects.count() == 1, "Materialized view should have updated"
 
-    def test_signals(self):
+    def test_signals(self, settings: SettingsWrapper):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
+
         expected = {
             models.MaterializedRelatedView: {"status": "UPDATED", "has_changed": True},
             models.Superusers: {"status": "EXISTS", "has_changed": False},
@@ -252,7 +254,9 @@ class TestView:
 
         assert LatestSuperusers.objects.count() == 1
 
-    def test_sync_pgviews_materialized_views_check_sql_changed(self):
+    def test_sync_pgviews_materialized_views_check_sql_changed_disabled(self, settings: SettingsWrapper):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
+
         assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
         assert models.MaterializedRelatedView.objects.count() == 0, "Test started with non-empty mat view"
 
@@ -282,7 +286,9 @@ class TestView:
         call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
         assert models.MaterializedRelatedView.objects.count() == 2
 
-    def test_migrate_materialized_views_check_sql_changed_default(self):
+    def test_migrate_materialized_views_check_sql_changed_disabled(self, settings: SettingsWrapper):
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
+
         assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
         assert models.MaterializedRelatedView.objects.count() == 0, "Test started with non-empty mat view"
 

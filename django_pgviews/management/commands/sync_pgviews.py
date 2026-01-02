@@ -35,7 +35,7 @@ class Command(BaseCommand):
             help=(
                 "Before recreating materialized view, check the SQL has changed compared to the currently active "
                 "materialized view in the database, if there is one, and only re-create the materialized view "
-                "if the SQL is different. By default uses django setting MATERIALIZED_VIEWS_CHECK_SQL_CHANGED."
+                "if the SQL is different. By default uses Django setting MATERIALIZED_VIEWS_CHECK_SQL_CHANGED."
             ),
         )
         parser.add_argument(
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             help=(
                 "Before recreating materialized view, check the SQL has changed compared to the currently active "
                 "materialized view in the database, if there is one, and only re-create the materialized view "
-                "if the SQL is different. By default uses django setting MATERIALIZED_VIEWS_CHECK_SQL_CHANGED."
+                "if the SQL is different. By default uses Django setting MATERIALIZED_VIEWS_CHECK_SQL_CHANGED."
             ),
         )
         parser.add_argument(
@@ -62,7 +62,7 @@ class Command(BaseCommand):
         vs = ViewSyncer()
 
         if materialized_views_check_sql_changed is None:
-            materialized_views_check_sql_changed = getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", False)
+            materialized_views_check_sql_changed = getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", True)
 
         vs.run(
             force=force,

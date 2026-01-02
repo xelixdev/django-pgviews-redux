@@ -36,7 +36,7 @@ class ViewConfig(apps.AppConfig):
             vs.run(
                 force=True,
                 update=True,
-                materialized_views_check_sql_changed=getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", False),
+                materialized_views_check_sql_changed=getattr(settings, "MATERIALIZED_VIEWS_CHECK_SQL_CHANGED", True),
                 using=using,
             )
             self.counter = 0

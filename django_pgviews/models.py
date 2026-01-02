@@ -45,7 +45,7 @@ class ViewSyncer(RunBacklog):
         force: bool = kwargs["force"]
         update: bool = kwargs["update"]
         using: str = kwargs["using"]
-        materialized_views_check_sql_changed: bool = kwargs.get("materialized_views_check_sql_changed", False)
+        materialized_views_check_sql_changed: bool = kwargs.get("materialized_views_check_sql_changed", True)
 
         if super().run(
             force=force,

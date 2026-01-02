@@ -311,9 +311,8 @@ checks existing materialized view definition in the database (if the mat. view e
 definition with the one currently defined in your `pg.MaterializedView` subclass. If the definition matches
 exactly, the re-create of materialized view is skipped.
 
-This feature is enabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in your Django settings to `True`,
-which enables the feature when running `migrate`. The command `sync_pgviews` uses this setting as well,
-however it also has switches `--enable-materialized-views-check-sql-changed` and
+This feature is on by default (as of version 1.0), it can be disabled by setting the `MATERIALIZED_VIEWS_CHECK_SQL_CHANGED` in your Django settings to `False`.
+The command `sync_pgviews` uses this setting as well, however, it also has switches `--enable-materialized-views-check-sql-changed` and
 `--disable-materialized-views-check-sql-changed` which override this setting for that command.
 
 This feature also takes into account indexes. When a view is deemed not needing recreating, the process will still
