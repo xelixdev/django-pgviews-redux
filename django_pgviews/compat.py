@@ -3,4 +3,4 @@ __all__ = ["ProgrammingError"]
 try:
     from psycopg import ProgrammingError
 except ImportError:
-    from psycopg2 import ProgrammingError
+    from psycopg2 import ProgrammingError  # type: ignore[missing-import]
