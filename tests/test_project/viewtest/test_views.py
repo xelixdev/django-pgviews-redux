@@ -20,7 +20,6 @@ from django_pgviews.management.operations._utils import _make_where, _schema_and
 from django_pgviews.signals import all_views_synced, view_synced
 
 from . import models
-from .models import LatestSuperusers
 
 try:
     from psycopg.errors import UndefinedTable
@@ -252,7 +251,7 @@ class TestView:
 
         call_command("sync_pgviews", update=False)
 
-        assert LatestSuperusers.objects.count() == 1
+        assert models.LatestSuperusers.objects.count() == 1
 
     def test_sync_pgviews_materialized_views_check_sql_changed_disabled(self, settings: SettingsWrapper):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
