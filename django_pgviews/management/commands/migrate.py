@@ -1,7 +1,34 @@
+from django.apps import apps
+from django.core.management import load_command_class
 from django.core.management.commands.migrate import Command as MigrateCommand
 
 from django_pgviews.db.migrations.autodetector import PGViewsAutodetector
 
 
-class Command(MigrateCommand):
+def get_base_migrate_command():
+    """
+    Find the migrate command from apps loaded before django_pgviews.
+
+    This ensures compatibility with other packages that override migrate
+    by inheriting from their command instead of Django's base command directly.
+    """
+    for app_config in apps.get_app_configs():
+        # Stop when we reach django_pgviews to avoid circular dependency
+        if app_config.name == "django_pgviews":
+            break
+        try:
+            # Try to load migrate command from this app
+            cmd = load_command_class(app_config.name, "migrate")
+            # Found a custom migrate command, use it as base
+            return cmd
+        except (ImportError, AttributeError):
+            # This app doesn't have a custom migrate command
+            continue
+    # No custom command found, use Django's default
+    return MigrateCommand
+
+
+class Command(get_base_migrate_command()):
+    """Django 6.0 compatible migrate with PGViewsAutodetector."""
+
     autodetector = PGViewsAutodetector
