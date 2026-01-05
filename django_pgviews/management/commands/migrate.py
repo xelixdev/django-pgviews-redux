@@ -18,9 +18,7 @@ def get_base_migrate_command():
             break
         try:
             # Try to load migrate command from this app
-            cmd = load_command_class(app_config.name, "migrate")
-            # Found a custom migrate command, use it as base
-            return cmd
+            return load_command_class(app_config.name, "migrate")
         except (ImportError, AttributeError):
             # This app doesn't have a custom migrate command
             continue

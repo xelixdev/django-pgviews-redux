@@ -19,9 +19,7 @@ def get_base_makemigrations_command():
             break
         try:
             # Try to load makemigrations command from this app
-            cmd = load_command_class(app_config.name, "makemigrations")
-            # Found a custom makemigrations command, use it as base
-            return cmd
+            return load_command_class(app_config.name, "makemigrations")
         except (ImportError, AttributeError):
             # This app doesn't have a custom makemigrations command
             continue
