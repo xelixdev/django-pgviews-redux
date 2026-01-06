@@ -324,6 +324,31 @@ class TestView:
 
 @pytest.mark.django_db
 class TestMaterializedViewsCheckSQLSettings:
+    def test_migrate_materialized_views_check_sql_set_to_true_no_data(self, settings: SettingsWrapper) -> None:
+        settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
+
+        assert models.TestModel.objects.count() == 0
+        assert models.MaterializedRelatedView.objects.count() == 0
+
+        models.TestModel.objects.create(name="Test")
+        call_command("migrate")
+        assert models.MaterializedRelatedView.objects.count() == 0
+
+        # create it with no data
+        with connection.cursor() as cursor:
+            cursor.execute("DROP MATERIALIZED VIEW viewtest_materializedrelatedview CASCADE;")
+            cursor.execute(
+                """
+                CREATE MATERIALIZED VIEW viewtest_materializedrelatedview as
+                SELECT id AS model_id, id FROM viewtest_testmodel
+                WITH NO DATA
+                """
+            )
+
+        # view didn't change but it's not populated, but as it's configured to have data it got refreshed
+        call_command("migrate")
+        assert models.MaterializedRelatedView.objects.count() == 1
+
     def test_migrate_materialized_views_check_sql_set_to_true(self, settings: SettingsWrapper) -> None:
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
 

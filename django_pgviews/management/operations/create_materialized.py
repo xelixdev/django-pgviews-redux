@@ -170,6 +170,18 @@ def create_materialized_view(
 
             if definitions[0] == definitions[1]:
                 _ensure_indexes(connection, cursor, view_cls, schema_name_log)
+
+                if view_cls.with_data:
+                    definitions_where, definitions_params = _make_where(schemaname=vschema, matviewname=[vname])
+                    cursor.execute(
+                        f"SELECT ispopulated FROM pg_catalog.pg_matviews WHERE {definitions_where}",
+                        definitions_params,
+                    )
+                    has_data = cursor.fetchone()[0]
+
+                    if not has_data:
+                        view_cls.refresh(concurrently=False)
+
                 return "EXISTS"
 
         if view_exists:

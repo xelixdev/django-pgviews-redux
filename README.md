@@ -330,6 +330,9 @@ check the indexes on the table and delete any extra indexes and create any missi
 is done through the index name, so if you use custom names for your indexes, it might happen that it won't get updated
 on change of the content but not the name.
 
+With data is also respected: if the view definition did not change, but data is not populated and the view class says data should be populated,
+a refresh will happen to ensure the view is populated.
+
 #### Refreshing dependencies / dependants
 
 The `refresh` method on `MaterializedView` only refreshes the given view, not dependencies or dependants.
