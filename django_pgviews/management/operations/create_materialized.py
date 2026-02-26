@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Literal
 
+from django.conf import settings
 from django.db import transaction
 from django.db.backends.postgresql.base import DatabaseWrapper
 from django.db.backends.postgresql.schema import DatabaseSchemaEditor
@@ -16,12 +17,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger("django_pgviews.view")
 
 
-def _create_mat_view(cursor: CursorWrapper, view_name: str, query: str, params: Any, with_data: bool) -> None:
+def _log_ctx(schema: str, tablespace: str | None = None) -> str:
+    """Formats a log context string combining schema and optional tablespace."""
+    if tablespace:
+        return f"{schema}, tablespace={tablespace}"
+    return schema
+
+
+def _create_mat_view(
+    cursor: CursorWrapper, view_name: str, query: str, params: Any, with_data: bool, tablespace: str | None = None
+) -> None:
     """
     Creates a materialized view using a specific cursor, name and definition.
+
+    If ``tablespace`` is specified, the materialized view will be created in that tablespace,
+    corresponding to the ``Meta.db_tablespace`` option on the view class.
     """
+    tablespace_clause = f" TABLESPACE {tablespace}" if tablespace else ""
     cursor.execute(
-        "CREATE MATERIALIZED VIEW {} AS {} {};".format(view_name, query, "WITH DATA" if with_data else "WITH NO DATA"),
+        "CREATE MATERIALIZED VIEW {}{} AS {} {};".format(
+            view_name, tablespace_clause, query, "WITH DATA" if with_data else "WITH NO DATA"
+        ),
         params,
     )
 
@@ -33,15 +49,58 @@ def _drop_mat_view(cursor: CursorWrapper, view_name: str) -> None:
     cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
 
 
-def _concurrent_index_name(view_name: str, concurrent_index: str) -> str:
-    # replace . with _ in view_name in case the table is in a schema
-    return view_name.replace(".", "_") + "_" + "_".join([s.strip() for s in concurrent_index.split(",")]) + "_index"
+def _concurrent_index_name(view_name: str, concurrent_index: str, tablespace: str | None = None) -> str:
+    """
+    Generates a concurrent index name.
+
+    If tablespace is explicitly provided, it's included in the name so that changing
+    the tablespace will generate a different index name, causing the old index to be
+    dropped and the new one to be created.
+    """
+    base_name = view_name.replace(".", "_") + "_" + "_".join([s.strip() for s in concurrent_index.split(",")])
+    if tablespace:
+        ts_safe = tablespace.replace("-", "_")
+        base_name += f"_{ts_safe}"
+    return truncate_name(base_name + "_index", length=63)
 
 
-def _create_concurrent_index(cursor: CursorWrapper, view_name: str, concurrent_index: str) -> None:
+def _create_concurrent_index(
+    cursor: CursorWrapper, view_name: str, concurrent_index: str, tablespace: str | None = None
+) -> None:
+    tablespace_clause = f" TABLESPACE {tablespace}" if tablespace else ""
     cursor.execute(
-        f"CREATE UNIQUE INDEX {_concurrent_index_name(view_name, concurrent_index)} ON {view_name} ({concurrent_index})"
+        f"CREATE UNIQUE INDEX {_concurrent_index_name(view_name, concurrent_index, tablespace)} ON {view_name} ({concurrent_index}){tablespace_clause}"
     )
+
+
+def _get_view_tablespace(view_cls: type[MaterializedView]) -> str | None:
+    """
+    Determines the tablespace to use for the materialized view body.
+
+    Priority:
+    1. ``Meta.db_tablespace`` - explicit override on the model class.
+    2. ``settings.DEFAULT_TABLESPACE`` - Django's project-wide tablespace default.
+    3. ``None`` - let PostgreSQL place the view in the default tablespace.
+    """
+    ts = getattr(view_cls._meta, "db_tablespace", None) or None
+    if ts:
+        return ts
+    return getattr(settings, "DEFAULT_TABLESPACE", "") or None
+
+
+def _get_concurrent_index_tablespace(view_cls: type[MaterializedView]) -> str | None:
+    """
+    Determines the tablespace to use for the concurrent unique index.
+
+    Priority:
+    1. ``view_cls.concurrent_index_tablespace`` - explicit override on the view class.
+    2. ``settings.DEFAULT_INDEX_TABLESPACE`` - Django's project-wide index tablespace default.
+    3. ``None`` - let PostgreSQL place the index in the default tablespace.
+    """
+    ts = getattr(view_cls, "_concurrent_index_tablespace", None)
+    if ts:
+        return ts
+    return getattr(settings, "DEFAULT_INDEX_TABLESPACE", "") or None
 
 
 class CustomSchemaEditor(DatabaseSchemaEditor):
@@ -81,9 +140,11 @@ def _ensure_indexes(
     required_indexes = {x.name for x in indexes}
 
     if view_cls._concurrent_index is not None:
-        concurrent_index_name = _concurrent_index_name(view_name, concurrent_index)
+        concurrent_index_tablespace = _get_concurrent_index_tablespace(view_cls)
+        concurrent_index_name = _concurrent_index_name(view_name, concurrent_index, concurrent_index_tablespace)
         required_indexes.add(concurrent_index_name)
     else:
+        concurrent_index_tablespace = None
         concurrent_index_name = None
 
     for index_name in existing_indexes - required_indexes:
@@ -98,13 +159,22 @@ def _ensure_indexes(
 
     for index_name in required_indexes - existing_indexes:
         if index_name == concurrent_index_name:
-            _create_concurrent_index(cursor, view_name, concurrent_index)
-            logger.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+            _create_concurrent_index(cursor, view_name, concurrent_index, tablespace=concurrent_index_tablespace)
+            logger.info(
+                "pgview created concurrent index on view %s (%s)",
+                view_name,
+                _log_ctx(schema_name_log, concurrent_index_tablespace),
+            )
         else:
             for index in indexes:
                 if index.name == index_name:
                     schema_editor.add_index(view_cls, index)
-                    logger.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
+                    logger.info(
+                        "pgview created index %s on view %s (%s)",
+                        index.name,
+                        view_name,
+                        _log_ctx(schema_name_log, index.db_tablespace or None),
+                    )
                     break
 
 
@@ -168,7 +238,12 @@ def create_materialized_view(
 
             _drop_mat_view(cursor, temp_viewname)
 
-            if definitions[0] == definitions[1]:
+            desired_tablespace = _get_view_tablespace(view_cls)
+            current_ts_where, current_ts_params = _make_where(schemaname=vschema, matviewname=vname)
+            cursor.execute(f"SELECT tablespace FROM pg_matviews WHERE {current_ts_where}", current_ts_params)
+            current_tablespace = cursor.fetchone()[0]
+
+            if definitions[0] == definitions[1] and current_tablespace == desired_tablespace:
                 _ensure_indexes(connection, cursor, view_cls, schema_name_log)
 
                 if view_cls.with_data:
@@ -188,19 +263,32 @@ def create_materialized_view(
             _drop_mat_view(cursor, view_name)
             logger.info("pgview dropped materialized view %s (%s)", view_name, schema_name_log)
 
-        _create_mat_view(cursor, view_name, query, view_query.params, with_data=view_cls.with_data)
-        logger.info("pgview created materialized view %s (%s)", view_name, schema_name_log)
+        tablespace = _get_view_tablespace(view_cls)
+        _create_mat_view(
+            cursor, view_name, query, view_query.params, with_data=view_cls.with_data, tablespace=tablespace
+        )
+        logger.info("pgview created materialized view %s (%s)", view_name, _log_ctx(schema_name_log, tablespace))
 
         if concurrent_index is not None:
-            _create_concurrent_index(cursor, view_name, concurrent_index)
-            logger.info("pgview created concurrent index on view %s (%s)", view_name, schema_name_log)
+            concurrent_index_tablespace = _get_concurrent_index_tablespace(view_cls)
+            _create_concurrent_index(cursor, view_name, concurrent_index, tablespace=concurrent_index_tablespace)
+            logger.info(
+                "pgview created concurrent index on view %s (%s)",
+                view_name,
+                _log_ctx(schema_name_log, concurrent_index_tablespace),
+            )
 
         if view_cls._meta.indexes:
             schema_editor = CustomSchemaEditor(connection)
 
             for index in view_cls._meta.indexes:
                 schema_editor.add_index(view_cls, index)
-                logger.info("pgview created index %s on view %s (%s)", index.name, view_name, schema_name_log)
+                logger.info(
+                    "pgview created index %s on view %s (%s)",
+                    index.name,
+                    view_name,
+                    _log_ctx(schema_name_log, index.db_tablespace or None),
+                )
 
         if view_exists:
             return "UPDATED"
