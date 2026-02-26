@@ -313,6 +313,50 @@ class PreferredCustomer(pg.MaterializedView):
     post_code = models.CharField(max_length=20)
 ```
 
+#### Tablespace
+
+A materialized view can be placed in a specific [PostgreSQL tablespace](https://www.postgresql.org/docs/current/manage-ag-tablespaces.html) by setting `db_tablespace` in the `Meta`
+class, like a regular Django model:
+
+```python
+from django_pgviews import view as pg
+
+
+class PreferredCustomer(pg.MaterializedView):
+    sql = """SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE"""
+
+    name = models.CharField(max_length=100)
+    post_code = models.CharField(max_length=20)
+
+    class Meta:
+        managed = False
+        db_tablespace = "my_tablespace"
+```
+
+If `db_tablespace` is not set, Django's
+[`DEFAULT_TABLESPACE`](https://docs.djangoproject.com/en/stable/ref/settings/#default-tablespace)
+setting is used as a fallback.
+
+#### Concurrent Index Tablespace
+
+The concurrent unique index (defined via `concurrent_index`) can be placed in a separate tablespace using
+`concurrent_index_tablespace`. If `concurrent_index_tablespace` is not set, Django's
+[`DEFAULT_INDEX_TABLESPACE`](https://docs.djangoproject.com/en/stable/ref/settings/#default-index-tablespace)
+setting is used as a fallback.
+
+```python
+from django_pgviews import view as pg
+
+
+class PreferredCustomer(pg.MaterializedView):
+    concurrent_index = "id"
+    concurrent_index_tablespace = "my_index_tablespace"
+    sql = """SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE"""
+
+    name = models.CharField(max_length=100)
+    post_code = models.CharField(max_length=20)
+```
+
 #### Conditional materialized views recreate
 
 Since all materialized views are recreated on running `migrate`, it can lead to obsolete recreations even if there

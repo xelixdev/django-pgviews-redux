@@ -87,6 +87,7 @@ class ViewMeta(models.base.ModelBase):
         dependencies = attrs.pop("dependencies", [])
         projection = attrs.pop("projection", [])
         concurrent_index = attrs.pop("concurrent_index", None)
+        concurrent_index_tablespace = attrs.pop("concurrent_index_tablespace", None)
 
         # Get projection
         deferred_projections = []
@@ -107,6 +108,7 @@ class ViewMeta(models.base.ModelBase):
         view_cls._dependencies = dependencies
         # Materialized views can have an index allowing concurrent refresh
         view_cls._concurrent_index = concurrent_index
+        view_cls._concurrent_index_tablespace = concurrent_index_tablespace
         for app_label, model_name, field_name in deferred_projections:
             model_spec = (app_label, model_name.lower())
 
@@ -192,6 +194,7 @@ class MaterializedView(View):
 
     with_data: bool = True
     _concurrent_index: str | None
+    _concurrent_index_tablespace: str | None
 
     @classmethod
     def refresh(cls, concurrently: bool = False, strict: bool = False) -> None:
