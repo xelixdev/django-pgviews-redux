@@ -43,7 +43,7 @@ jobs:
       - name: Run test suite
         run: tox
       - name: Upload coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.py }}-${{ matrix.postgres-version }}
           path: |

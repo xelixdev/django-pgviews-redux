@@ -15,7 +15,7 @@ jobs:
         uses: snok/install-poetry@v1.4.1
       - name: Build
         run: poetry build
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           path: ./dist/*
 
