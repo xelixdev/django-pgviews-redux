@@ -34,10 +34,9 @@ def _create_mat_view(
     corresponding to the ``Meta.db_tablespace`` option on the view class.
     """
     tablespace_clause = f" TABLESPACE {tablespace}" if tablespace else ""
+    with_data_clause = "WITH DATA" if with_data else "WITH NO DATA"
     cursor.execute(
-        "CREATE MATERIALIZED VIEW {}{} AS {} {};".format(
-            view_name, tablespace_clause, query, "WITH DATA" if with_data else "WITH NO DATA"
-        ),
+        f"CREATE MATERIALIZED VIEW {view_name}{tablespace_clause} AS {query} {with_data_clause};",
         params,
     )
 
@@ -68,8 +67,9 @@ def _create_concurrent_index(
     cursor: CursorWrapper, view_name: str, concurrent_index: str, tablespace: str | None = None
 ) -> None:
     tablespace_clause = f" TABLESPACE {tablespace}" if tablespace else ""
+    concurrent_index_name = _concurrent_index_name(view_name, concurrent_index, tablespace)
     cursor.execute(
-        f"CREATE UNIQUE INDEX {_concurrent_index_name(view_name, concurrent_index, tablespace)} ON {view_name} ({concurrent_index}){tablespace_clause}"
+        f"CREATE UNIQUE INDEX {concurrent_index_name} ON {view_name} ({concurrent_index}){tablespace_clause}"
     )
 
 
