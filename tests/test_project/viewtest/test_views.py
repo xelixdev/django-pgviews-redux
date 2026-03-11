@@ -2,6 +2,7 @@
 
 import random
 import string
+from collections.abc import Generator
 from contextlib import closing
 from datetime import timedelta
 
@@ -541,11 +542,6 @@ class TestMaterializedViewTablespace:
     """
 
     @staticmethod
-    def _make_tablespace_name(prefix: str = "test_ts") -> str:
-        rand_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        return f"{prefix}_{rand_suffix}"
-
-    @staticmethod
     def _create_pg_tablespace(cursor, name: str) -> None:
         cursor.execute(f"COPY (SELECT 1) TO PROGRAM 'mkdir -p /tmp/{name}';")
         cursor.execute(f"CREATE TABLESPACE {name} LOCATION '/tmp/{name}'")
@@ -553,6 +549,24 @@ class TestMaterializedViewTablespace:
     @staticmethod
     def _drop_pg_tablespace(cursor, name: str) -> None:
         cursor.execute(f"DROP TABLESPACE IF EXISTS {name};")
+
+    @pytest.fixture
+    def tablespace_name(self) -> Generator[str, None, None]:
+        rand_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        name = f"test_ts_{rand_suffix}"
+        with connection.cursor() as cursor:
+            self._create_pg_tablespace(cursor, name)
+            yield name
+            self._drop_pg_tablespace(cursor, name)
+
+    @pytest.fixture
+    def second_tablespace_name(self) -> Generator[str, None, None]:
+        rand_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        name = f"test_ts2_{rand_suffix}"
+        with connection.cursor() as cursor:
+            self._create_pg_tablespace(cursor, name)
+            yield name
+            self._drop_pg_tablespace(cursor, name)
 
     @staticmethod
     def _get_index_tablespace(cursor, view_name: str, index_name: str) -> str | None:
@@ -568,17 +582,13 @@ class TestMaterializedViewTablespace:
         assert row is not None, f"Index {index_name!r} on view {view_name!r} not found in pg_indexes"
         return row[0]
 
-    def test_create_materialized_view_with_tablespace(self):
+    def test_create_materialized_view_with_tablespace(self, tablespace_name: str) -> None:
         """
         Meta.db_tablespace is applied when creating a materialized view.
         The view should be created in the specified tablespace, which is reflected
         in pg_matviews.tablespace.
         """
-        tablespace_name = self._make_tablespace_name()
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, tablespace_name)
 
         original_tablespace = models.MaterializedRelatedViewWithIndex._meta.db_tablespace
         try:
@@ -609,18 +619,13 @@ class TestMaterializedViewTablespace:
             models.MaterializedRelatedViewWithIndex._meta.db_tablespace = original_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, tablespace_name)
 
-    def test_db_default_tablespace(self, settings: SettingsWrapper):
+    def test_db_default_tablespace(self, settings: SettingsWrapper, tablespace_name: str) -> None:
         """
         DEFAULT_TABLESPACE is used for the materialized view body when no
         explicit Meta.db_tablespace is set.
         """
-        tablespace_name = self._make_tablespace_name()
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, tablespace_name)
 
         original_tablespace = models.MaterializedRelatedViewWithIndex._meta.db_tablespace
         try:
@@ -642,37 +647,32 @@ class TestMaterializedViewTablespace:
             models.MaterializedRelatedViewWithIndex._meta.db_tablespace = original_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, tablespace_name)
 
-    def test_db_default_tablespace_change(self, settings: SettingsWrapper):
+    def test_db_default_tablespace_change(
+        self, settings: SettingsWrapper, tablespace_name: str, second_tablespace_name: str
+    ) -> None:
         """
         Changing DEFAULT_TABLESPACE causes the materialized view to be dropped
         and recreated in the new tablespace when check_sql_changed=True.
         The SQL definition is identical, so this must be detected via tablespace comparison.
         """
-        ts1_name = self._make_tablespace_name("test_ts1")
-        ts2_name = self._make_tablespace_name("test_ts2")
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, ts1_name)
-            self._create_pg_tablespace(cursor, ts2_name)
 
         original_tablespace = models.MaterializedRelatedViewWithIndex._meta.db_tablespace
         try:
             # Rely entirely on DEFAULT_TABLESPACE; no explicit Meta.db_tablespace.
             models.MaterializedRelatedViewWithIndex._meta.db_tablespace = ""
-            settings.DEFAULT_TABLESPACE = ts1_name
+            settings.DEFAULT_TABLESPACE = tablespace_name
 
             result = create_materialized_view(connection, models.MaterializedRelatedViewWithIndex)
             assert result in ("CREATED", "UPDATED")
 
             with connection.cursor() as cursor:
                 cursor.execute("SELECT tablespace FROM pg_matviews WHERE matviewname = %s", [view_name])
-                assert cursor.fetchone()[0] == ts1_name
+                assert cursor.fetchone()[0] == tablespace_name
 
             # Change DEFAULT_TABLESPACE and sync with check_sql_changed=True.
-            settings.DEFAULT_TABLESPACE = ts2_name
+            settings.DEFAULT_TABLESPACE = second_tablespace_name
             result = create_materialized_view(
                 connection, models.MaterializedRelatedViewWithIndex, check_sql_changed=True
             )
@@ -682,25 +682,21 @@ class TestMaterializedViewTablespace:
                 cursor.execute("SELECT tablespace FROM pg_matviews WHERE matviewname = %s", [view_name])
                 row = cursor.fetchone()
                 assert row is not None, f"Materialized view {view_name!r} not found after recreation"
-                assert row[0] == ts2_name, f"Expected tablespace {ts2_name!r}, got {row[0]!r}"
+                assert row[0] == second_tablespace_name, (
+                    f"Expected tablespace {second_tablespace_name!r}, got {row[0]!r}"
+                )
         finally:
             models.MaterializedRelatedViewWithIndex._meta.db_tablespace = original_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, ts1_name)
-                self._drop_pg_tablespace(cursor, ts2_name)
 
-    def test_concurrent_index_tablespace(self):
+    def test_concurrent_index_tablespace(self, tablespace_name: str) -> None:
         """
         concurrent_index_tablespace is used for the concurrent unique index.
         When set, the concurrent index should be in that tablespace, independent of
         Meta.db_tablespace.
         """
-        tablespace_name = self._make_tablespace_name()
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, tablespace_name)
 
         original_index_tablespace = models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace
         try:
@@ -719,18 +715,13 @@ class TestMaterializedViewTablespace:
             models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = original_index_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, tablespace_name)
 
-    def test_concurrent_index_default_tablespace(self, settings: SettingsWrapper):
+    def test_concurrent_index_default_tablespace(self, settings: SettingsWrapper, tablespace_name: str) -> None:
         """
         DEFAULT_INDEX_TABLESPACE is used for the concurrent unique index
         when no explicit concurrent_index_tablespace is set.
         """
-        tablespace_name = self._make_tablespace_name()
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, tablespace_name)
 
         original_index_tablespace = models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace
         original_default_tablespace = getattr(settings, "DEFAULT_INDEX_TABLESPACE", None)
@@ -758,42 +749,35 @@ class TestMaterializedViewTablespace:
                     delattr(settings, "DEFAULT_INDEX_TABLESPACE")
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, tablespace_name)
 
-    def test_concurrent_index_tablespace_change(self):
+    def test_concurrent_index_tablespace_change(self, tablespace_name: str, second_tablespace_name: str) -> None:
         """
         Changing the concurrent_index_tablespace causes the index to be
         dropped and recreated in the new tablespace when check_sql_changed=True.
         """
-        ts1_name = self._make_tablespace_name("test_ts1")
-        ts2_name = self._make_tablespace_name("test_ts2")
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, ts1_name)
-            self._create_pg_tablespace(cursor, ts2_name)
 
         original_index_tablespace = models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace
         try:
             # Create view with concurrent index in the first tablespace.
-            models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = ts1_name
+            models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = tablespace_name
             result = create_materialized_view(connection, models.MaterializedRelatedViewWithIndex)
             assert result in ("CREATED", "UPDATED")
 
-            concurrent_name_ts1 = _concurrent_index_name(view_name, "id", ts1_name)
+            concurrent_name_ts1 = _concurrent_index_name(view_name, "id", tablespace_name)
             with connection.cursor() as cursor:
                 idx_tablespace = self._get_index_tablespace(cursor, view_name, concurrent_name_ts1)
-                assert idx_tablespace == ts1_name, f"Expected tablespace {ts1_name}, got {idx_tablespace}"
+                assert idx_tablespace == tablespace_name, f"Expected tablespace {tablespace_name}, got {idx_tablespace}"
 
             # Change to the second tablespace and sync with check_sql_changed=True.
-            models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = ts2_name
+            models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = second_tablespace_name
             result = create_materialized_view(
                 connection, models.MaterializedRelatedViewWithIndex, check_sql_changed=True
             )
             assert result == "EXISTS", "View SQL unchanged, should return EXISTS"
 
             # The old index (with ts1 name) should be gone, new one (with ts2 name) should exist.
-            concurrent_name_ts2 = _concurrent_index_name(view_name, "id", ts2_name)
+            concurrent_name_ts2 = _concurrent_index_name(view_name, "id", second_tablespace_name)
             with connection.cursor() as cursor:
                 cursor.execute(
                     "SELECT indexname FROM pg_indexes WHERE tablename = %s AND indexname = %s",
@@ -802,43 +786,35 @@ class TestMaterializedViewTablespace:
                 assert cursor.fetchone() is None, f"Old index {concurrent_name_ts1} should have been dropped"
 
                 idx_tablespace = self._get_index_tablespace(cursor, view_name, concurrent_name_ts2)
-                assert idx_tablespace == ts2_name, (
-                    f"Expected concurrent index in tablespace {ts2_name}, got {idx_tablespace}"
+                assert idx_tablespace == second_tablespace_name, (
+                    f"Expected concurrent index in tablespace {second_tablespace_name}, got {idx_tablespace}"
                 )
         finally:
             models.MaterializedRelatedViewWithIndex._concurrent_index_tablespace = original_index_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, ts1_name)
-                self._drop_pg_tablespace(cursor, ts2_name)
 
-    def test_db_tablespace_change(self):
+    def test_db_tablespace_change(self, tablespace_name: str, second_tablespace_name: str) -> None:
         """
         Changing Meta.db_tablespace causes the view to be dropped and
         recreated in the new tablespace when check_sql_changed=True.
         The SQL definition is identical, so this must be detected separately.
         """
-        ts1_name = self._make_tablespace_name("test_ts1")
-        ts2_name = self._make_tablespace_name("test_ts2")
         view_name = models.MaterializedRelatedViewWithIndex._meta.db_table
-
-        with connection.cursor() as cursor:
-            self._create_pg_tablespace(cursor, ts1_name)
-            self._create_pg_tablespace(cursor, ts2_name)
 
         original_tablespace = models.MaterializedRelatedViewWithIndex._meta.db_tablespace
         try:
             # Create view in the first tablespace.
-            models.MaterializedRelatedViewWithIndex._meta.db_tablespace = ts1_name
+            models.MaterializedRelatedViewWithIndex._meta.db_tablespace = tablespace_name
             result = create_materialized_view(connection, models.MaterializedRelatedViewWithIndex)
             assert result in ("CREATED", "UPDATED")
 
             with connection.cursor() as cursor:
                 cursor.execute("SELECT tablespace FROM pg_matviews WHERE matviewname = %s", [view_name])
-                assert cursor.fetchone()[0] == ts1_name
+                assert cursor.fetchone()[0] == tablespace_name
 
             # Change to the second tablespace and sync with check_sql_changed=True.
-            models.MaterializedRelatedViewWithIndex._meta.db_tablespace = ts2_name
+            models.MaterializedRelatedViewWithIndex._meta.db_tablespace = second_tablespace_name
             result = create_materialized_view(
                 connection, models.MaterializedRelatedViewWithIndex, check_sql_changed=True
             )
@@ -848,10 +824,10 @@ class TestMaterializedViewTablespace:
                 cursor.execute("SELECT tablespace FROM pg_matviews WHERE matviewname = %s", [view_name])
                 row = cursor.fetchone()
                 assert row is not None, f"Materialized view {view_name!r} not found after recreation"
-                assert row[0] == ts2_name, f"Expected tablespace {ts2_name!r}, got {row[0]!r}"
+                assert row[0] == second_tablespace_name, (
+                    f"Expected tablespace {second_tablespace_name!r}, got {row[0]!r}"
+                )
         finally:
             models.MaterializedRelatedViewWithIndex._meta.db_tablespace = original_tablespace
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
-                self._drop_pg_tablespace(cursor, ts1_name)
-                self._drop_pg_tablespace(cursor, ts2_name)
