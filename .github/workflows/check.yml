@@ -28,7 +28,7 @@ jobs:
           - 18
     steps:
       - name: Setup python for test ${{ matrix.py }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v7
@@ -66,7 +66,7 @@ jobs:
           pattern: coverage-*
           merge-multiple: true
       - name: Setup python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install dependencies
