@@ -16,7 +16,7 @@ from django.db.models.signals import post_migrate
 from django.db.utils import DatabaseError, OperationalError
 from django.dispatch import receiver
 from django.utils import timezone
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django import Settings
 
 from django_pgviews.exceptions import ConcurrentIndexNotDefinedError
 from django_pgviews.management.operations._utils import _make_where, _schema_and_name
@@ -221,7 +221,7 @@ class TestView:
 
         assert models.MaterializedRelatedViewWithNoData.objects.count() == 1, "Materialized view should have updated"
 
-    def test_signals(self, settings: SettingsWrapper):
+    def test_signals(self, settings: Settings):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
 
         expected = {
@@ -261,7 +261,7 @@ class TestView:
 
         assert models.LatestSuperusers.objects.count() == 1
 
-    def test_sync_pgviews_materialized_views_check_sql_changed_disabled(self, settings: SettingsWrapper):
+    def test_sync_pgviews_materialized_views_check_sql_changed_disabled(self, settings: Settings):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
 
         assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
@@ -293,7 +293,7 @@ class TestView:
         call_command("sync_pgviews", update=False, materialized_views_check_sql_changed=True)
         assert models.MaterializedRelatedView.objects.count() == 2
 
-    def test_migrate_materialized_views_check_sql_changed_disabled(self, settings: SettingsWrapper):
+    def test_migrate_materialized_views_check_sql_changed_disabled(self, settings: Settings):
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = False
 
         assert models.TestModel.objects.count() == 0, "Test started with non-empty TestModel"
@@ -332,7 +332,7 @@ class TestView:
 
 @pytest.mark.django_db
 class TestMaterializedViewsCheckSQLSettings:
-    def test_migrate_materialized_views_check_sql_set_to_true_no_data(self, settings: SettingsWrapper) -> None:
+    def test_migrate_materialized_views_check_sql_set_to_true_no_data(self, settings: Settings) -> None:
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
 
         assert models.TestModel.objects.count() == 0
@@ -357,7 +357,7 @@ class TestMaterializedViewsCheckSQLSettings:
         call_command("migrate")
         assert models.MaterializedRelatedView.objects.count() == 1
 
-    def test_migrate_materialized_views_check_sql_set_to_true(self, settings: SettingsWrapper) -> None:
+    def test_migrate_materialized_views_check_sql_set_to_true(self, settings: Settings) -> None:
         settings.MATERIALIZED_VIEWS_CHECK_SQL_CHANGED = True
 
         assert models.TestModel.objects.count() == 0
@@ -484,7 +484,7 @@ class TestMakeWhere:
 @pytest.mark.django_db
 class TestMaterializedViewSyncDisabledSettings:
     @pytest.fixture(autouse=True)
-    def set_up(self, settings: SettingsWrapper):
+    def set_up(self, settings: Settings):
         # Store original receivers and settings
         _original_receivers = list(post_migrate.receivers)
         _original_config = apps.get_app_config("django_pgviews").counter
@@ -620,7 +620,7 @@ class TestMaterializedViewTablespace:
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
 
-    def test_db_default_tablespace(self, settings: SettingsWrapper, tablespace_name: str) -> None:
+    def test_db_default_tablespace(self, settings: Settings, tablespace_name: str) -> None:
         """
         DEFAULT_TABLESPACE is used for the materialized view body when no
         explicit Meta.db_tablespace is set.
@@ -649,7 +649,7 @@ class TestMaterializedViewTablespace:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
 
     def test_db_default_tablespace_change(
-        self, settings: SettingsWrapper, tablespace_name: str, second_tablespace_name: str
+        self, settings: Settings, tablespace_name: str, second_tablespace_name: str
     ) -> None:
         """
         Changing DEFAULT_TABLESPACE causes the materialized view to be dropped
@@ -716,7 +716,7 @@ class TestMaterializedViewTablespace:
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name} CASCADE;")
 
-    def test_concurrent_index_default_tablespace(self, settings: SettingsWrapper, tablespace_name: str) -> None:
+    def test_concurrent_index_default_tablespace(self, settings: Settings, tablespace_name: str) -> None:
         """
         DEFAULT_INDEX_TABLESPACE is used for the concurrent unique index
         when no explicit concurrent_index_tablespace is set.
