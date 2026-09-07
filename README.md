@@ -17,8 +17,8 @@ Add to installed applications in settings.py:
 
 ```python
 INSTALLED_APPS = (
-  # ...
-  'django_pgviews',
+    # ...
+    "django_pgviews",
 )
 ```
 
@@ -35,15 +35,15 @@ class Customer(models.Model):
     post_code = models.CharField(max_length=20)
     is_preferred = models.BooleanField(default=False)
 
-    
-class PreferredCustomer(pg.View):    
+
+class PreferredCustomer(pg.View):
     name = models.CharField(max_length=100)
     post_code = models.CharField(max_length=20)
-    
+
     sql = """SELECT id, name, post_code FROM myapp_customer WHERE is_preferred IS TRUE"""
 
     class Meta:
-      managed = False
+        managed = False
 ```
 
 > [!NOTE]
@@ -85,7 +85,7 @@ class PreferredCustomer(pg.View):
     sql = "SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE"
 
     class Meta:
-      managed = False
+        managed = False
 ```
 
 ### Define Projection
@@ -98,11 +98,11 @@ from django_pgviews import view as pg
 
 
 class PreferredCustomer(pg.View):
-    projection = ['myapp.Customer.*']
+    projection = ["myapp.Customer.*"]
     sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
 
     class Meta:
-      managed = False
+        managed = False
 ```
 
 This will take all fields on `myapp.Customer` and apply them to `PreferredCustomer`
@@ -132,15 +132,17 @@ To handle this, you can use the migrations to drop the view before the migration
 1. Add an empty migration to the app with your view (`python manage.py makemigrations --empty app_name`)
 2. Add database operation to the migration
 ```python
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                django_pgviews.db.migrations.operations.DeleteViewOperation(
-                    name="SomeView",  # CHANGEME
-                    materialized=True,  # CHANGEME
-                    db_name="some_view",  # CHANGEME
-                ),
-            ]
-        ),
+(
+    migrations.SeparateDatabaseAndState(
+        database_operations=[
+            django_pgviews.db.migrations.operations.DeleteViewOperation(
+                name="SomeView",  # CHANGEME
+                materialized=True,  # CHANGEME
+                db_name="some_view",  # CHANGEME
+            ),
+        ]
+    ),
+)
 ```
 3. Make the migration changing the column depend on the migration dropping the view
 
@@ -182,12 +184,15 @@ Example:
 ```python
 from django_pgviews import view as pg
 
+
 class PreferredCustomer(pg.View):
-    dependencies = ['myapp.OtherView',]
+    dependencies = [
+        "myapp.OtherView",
+    ]
     sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
 
     class Meta:
-      managed = False
+        managed = False
 ```
 
 ### Materialized Views
@@ -206,6 +211,7 @@ from django_pgviews import view as pg
 VIEW_SQL = """
     SELECT name, post_code FROM myapp_customer WHERE is_preferred = TRUE
 """
+
 
 class Customer(models.Model):
     name = models.CharField(max_length=100)
@@ -247,8 +253,9 @@ VIEW_SQL = """
     SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE
 """
 
+
 class PreferredCustomer(pg.MaterializedView):
-    concurrent_index = 'id, post_code'
+    concurrent_index = "id, post_code"
     sql = VIEW_SQL
 
     name = models.CharField(max_length=100)
@@ -277,6 +284,7 @@ VIEW_SQL = """
     SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE
 """
 
+
 class PreferredCustomer(pg.MaterializedView):
     sql = VIEW_SQL
 
@@ -286,7 +294,7 @@ class PreferredCustomer(pg.MaterializedView):
     class Meta:
         managed = False  # don't forget this, otherwise Django will think it's a regular model
         indexes = [
-             models.Index(fields=["name"]),
+            models.Index(fields=["name"]),
         ]
 ```
 
@@ -302,8 +310,9 @@ Example:
 ```python
 from django_pgviews import view as pg
 
+
 class PreferredCustomer(pg.MaterializedView):
-    concurrent_index = 'id, post_code'
+    concurrent_index = "id, post_code"
     sql = """
         SELECT id, name, post_code FROM myapp_customer WHERE is_preferred = TRUE
     """
@@ -413,8 +422,8 @@ class PreferredCustomer(pg.View):
     sql = """SELECT * FROM myapp_customer WHERE is_preferred = TRUE;"""
 
     class Meta:
-      db_table = 'my_custom_schema.preferredcustomer'
-      managed = False
+        db_table = "my_custom_schema.preferredcustomer"
+        managed = False
 ```
 
 ### Dynamic View SQL
@@ -433,12 +442,12 @@ class PreferredCustomer(pg.View):
     def get_sql(cls):
         return pg.ViewSQL(
             """SELECT * FROM myapp_customer WHERE is_preferred = TRUE and created_at >= %s;""",
-            [settings.MIN_PREFERRED_CUSTOMER_CREATED_AT]
+            [settings.MIN_PREFERRED_CUSTOMER_CREATED_AT],
         )
 
     class Meta:
-      db_table = 'preferredcustomer'
-      managed = False
+        db_table = "preferredcustomer"
+        managed = False
 ```
 
 ### Sync Listeners
