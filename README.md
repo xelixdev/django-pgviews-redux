@@ -574,4 +574,4 @@ See `--help` for more available parameters.
 
 ## Python Support
 
-Django PGViews Redux only officially supports Python 3.10+, it might work on previous versions, but there are no guarantees.
+Django PGViews Redux only officially supports Python 3.11+, it might work on previous versions, but there are no guarantees.
